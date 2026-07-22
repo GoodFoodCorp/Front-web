@@ -1,4 +1,4 @@
-name: CI Docker
+name: CI Docker front-web
 
 on:
   push:
