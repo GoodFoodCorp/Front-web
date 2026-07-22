@@ -1,0 +1,15 @@
+services:
+  web-app:
+    build: .
+    container_name: web-app
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    networks:
+      - microservices-net
+
+# Reaches auth/order/stock/delivery by container name on the shared network:
+#   docker network create microservices-net   (once)
+networks:
+  microservices-net:
+    external: true

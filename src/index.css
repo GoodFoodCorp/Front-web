@@ -1,0 +1,61 @@
+@import 'tailwindcss';
+
+/* ── Good Food design tokens (charte graphique) ───────────── */
+@theme {
+  --color-brand: #004430; /* vert foncé primaire */
+  --color-brand-dark: #00301f;
+  --color-brand-light: #0a5c40;
+  --color-brand-pale: #e7f0ec;
+  --color-accent: #ffcc00; /* jaune moutarde */
+  --color-accent-dark: #e6b800;
+  --color-cream: #faf7f0; /* fond storefront */
+  --color-ink: #1c2321;
+
+  --font-display: 'Montserrat', sans-serif;
+  --font-sans: 'Open Sans', sans-serif;
+
+  --shadow-lift: 0 10px 30px -12px rgb(0 68 48 / 0.25);
+  --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Subtle dotted food-pattern backdrop used on hero/login panels */
+.brand-texture {
+  background-image: radial-gradient(rgb(255 255 255 / 0.07) 1.5px, transparent 1.5px);
+  background-size: 22px 22px;
+}
