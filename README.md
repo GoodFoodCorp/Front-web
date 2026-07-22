@@ -117,6 +117,32 @@ préfigurent l'Ingress Kubernetes cible :
 
 ---
 
+## Dépendances
+
+> **Légende** — 🔴 indispensable (le service ne démarre pas ou ne sert à rien) ·
+> 🟠 nécessaire à une fonctionnalité (le reste continue de marcher) ·
+> 🟡 optionnelle (dégradation silencieuse, journalisée)
+
+Le front n'a **aucune base de données** : il consomme les API des services via
+nginx. Chaque service manquant ne casse que les écrans qui en dépendent.
+
+| Service | Type | Conséquence si absent |
+|---|---|---|
+| **auth-service** | 🔴 | Impossible de se connecter ou de s'inscrire |
+| **franchise-service** | 🔴 | Page d'accueil vide (liste des restaurants) et pages Fournisseurs cassées |
+| **menu-service** | 🟠 | Menus indisponibles (client et gestion franchisé) — on ne peut plus commander |
+| **order-service** | 🟠 | Commandes, checkout et écrans de suivi cassés |
+| **payment-service** | 🟠 | Le bouton « Payer » échoue ; la navigation reste utilisable |
+| **stock-service** | 🟠 | Pages Stocks et Réapprovisionnement cassées, 2 indicateurs du tableau de bord vides |
+| **reservation-service** | 🟡 | Seules les pages Réservations sont cassées |
+| **user-service** | 🟡 | Seule la page Profil est cassée |
+| **delivery-service** | 🟢 | Aucun impact : pas encore d'écran de livraison |
+
+**Minimum pour une démonstration client** : `auth` + `franchise` + `menu` +
+`order` + `payment`.
+
+---
+
 ## Lancement
 
 ### En conteneur (recommandé — reste disponible en permanence)
