@@ -1,0 +1,15 @@
+name: CI Docker
+
+on:
+  push:
+    branches:
+      - deploy-automated
+
+jobs:
+  build:
+    uses: GoodFoodCorp/ci-templates/.github/workflows/build-docker.yml@main
+    with:
+      app_name: "Front-web"
+    secrets:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
