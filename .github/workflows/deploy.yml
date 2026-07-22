@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    uses: GoodFoodCorp/ci-template/.github/workflows/build-docker.yml@main
+    uses: GoodFoodCorp/ci-template/.github/workflows/build-deploy.yml@main
     with:
       app_name: "Front-web"
     secrets:
