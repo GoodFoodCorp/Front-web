@@ -13,3 +13,4 @@ jobs:
     secrets:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      ORG_PIPELINE_TOKEN: ${{ secrets.ORG_PIPELINE_TOKEN }}
