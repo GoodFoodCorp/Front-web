@@ -9,7 +9,7 @@ jobs:
   build:
     uses: GoodFoodCorp/ci-template/.github/workflows/build-deploy.yml@main
     with:
-      app_name: "Front-web"
+      app_name: "front-web"
     secrets:
       REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
