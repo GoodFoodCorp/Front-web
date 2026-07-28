@@ -1,4 +1,5 @@
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config/app.config';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -11,12 +12,10 @@ export class ApiError extends Error {
 
 /**
  * Single network entry point (spec: no fetch calls outside the API layer).
- * Same-origin URLs — the Vite dev proxy / nginx routes them per service,
- * exactly like the future K8s ingress.
  */
 export async function http<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().accessToken;
-  const res = await fetch(path, {
+  const res = await fetch(new URL(path, API_BASE_URL), {
     ...options,
     headers: {
       'Content-Type': 'application/json',
