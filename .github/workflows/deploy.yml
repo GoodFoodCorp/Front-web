@@ -3,7 +3,7 @@ name: CI Docker front-web
 on:
   push:
     branches:
-      - deploy-automated
+      - develop
 
 jobs:
   build:
