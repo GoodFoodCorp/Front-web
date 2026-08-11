@@ -9,3 +9,13 @@ export interface Restaurant {
   plan: string;
   isActive: boolean;
 }
+
+/** Payload for creating/updating a restaurant (siège only). */
+export interface RestaurantForm {
+  name: string;
+  slug: string;
+  address: string;
+  city: string;
+  plan: string;
+  isActive: boolean;
+}

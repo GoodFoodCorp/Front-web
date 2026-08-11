@@ -49,7 +49,7 @@ export function ReservationsPage() {
   const canSubmit = form.restaurantId && form.customerName && form.date && !create.isPending;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+    <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[380px_1fr]">
       <div>
         <h1 className="mb-4 font-display text-2xl font-bold text-brand">Réserver une table</h1>
         <Card>

@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Check, Plus } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
-import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { LocationBadge } from '../components/LocationBadge';
 import { Spinner } from '../components/Spinner';
-import { useCreateStock, useRegisterMovement, useStocks } from '../features/stock/hooks/useStock';
+import { useCreateReplenishment, useCreateStock, useRegisterMovement, useStocks } from '../features/stock/hooks/useStock';
 import type { StockItem } from '../features/stock/types/stock.types';
 
 export function StockPage() {
@@ -17,47 +17,64 @@ export function StockPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-brand">Gestion des stocks</h1>
-          <p className="text-neutral-500">Suivi des quantités et mouvements de votre restaurant</p>
+          <p className="text-neutral-500">Gérer les stocks d'ingrédients et fournitures</p>
         </div>
-        <Button onClick={() => setShowCreate((v) => !v)}>
-          <Plus size={18} /> Nouvel article
-        </Button>
+        <LocationBadge />
       </div>
 
-      {showCreate && <CreateStockForm onDone={() => setShowCreate(false)} />}
-
-      {!stocks || stocks.length === 0 ? (
-        <EmptyState icon="📦" title="Aucun article en stock" hint="Créez votre premier article." />
-      ) : (
-        <div className="overflow-x-auto rounded-2xl border border-brand/10 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-brand-pale text-left font-display text-brand">
-              <tr>
-                <th className="px-5 py-3">Article</th>
-                <th className="px-5 py-3">Quantité</th>
-                <th className="px-5 py-3">Seuils</th>
-                <th className="px-5 py-3">État</th>
-                <th className="px-5 py-3 text-right">Mouvement</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brand/5">
-              {stocks.map((item) => (
-                <StockRow key={item.id} item={item} />
-              ))}
-            </tbody>
-          </table>
+      <div className="rounded-2xl border border-brand/10 bg-white">
+        <div className="flex items-center justify-between border-b border-brand/10 px-5 py-4">
+          <h2 className="font-display font-bold text-brand">Inventaire</h2>
+          <Button onClick={() => setShowCreate((v) => !v)} className="px-4 py-2">
+            <Plus size={16} /> Ajouter
+          </Button>
         </div>
-      )}
+
+        {showCreate && (
+          <div className="border-b border-brand/10 p-5">
+            <CreateStockForm onDone={() => setShowCreate(false)} />
+          </div>
+        )}
+
+        {!stocks || stocks.length === 0 ? (
+          <div className="p-8">
+            <EmptyState icon="📦" title="Aucun article en stock" hint="Créez votre premier article." />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-neutral-400">
+                <tr>
+                  <th className="px-5 py-3 font-medium">Nom</th>
+                  <th className="px-5 py-3 font-medium">Quantités</th>
+                  <th className="px-5 py-3 font-medium">Unités</th>
+                  <th className="px-5 py-3 font-medium">Recommande à</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="px-5 py-3 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brand/5">
+                {stocks.map((item) => (
+                  <StockRow key={item.id} item={item} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function StockRow({ item }: { item: StockItem }) {
   const movement = useRegisterMovement();
+  const replenish = useCreateReplenishment();
+  const [editing, setEditing] = useState(false);
   const [qty, setQty] = useState('');
+  const [ordered, setOrdered] = useState(false);
 
   const apply = (type: 'IN' | 'OUT') => {
     const quantity = Number(qty);
@@ -68,43 +85,76 @@ function StockRow({ item }: { item: StockItem }) {
     );
   };
 
+  const order = () => {
+    const suggested = Math.max(item.thresholdMax - item.quantityOnHand, item.thresholdMin);
+    replenish.mutate(
+      { stockItemId: item.id, quantity: suggested },
+      { onSuccess: () => setOrdered(true) },
+    );
+  };
+
   return (
-    <tr className="hover:bg-neutral-50">
-      <td className="px-5 py-3 font-semibold text-brand">{item.name}</td>
-      <td className="px-5 py-3">
-        {item.quantityOnHand} {item.unit}
-      </td>
-      <td className="px-5 py-3 text-neutral-500">
-        {item.thresholdMin} – {item.thresholdMax}
-      </td>
-      <td className="px-5 py-3">
-        {item.isBelowMinimum ? (
-          <Badge tone="red">
-            <AlertTriangle size={12} className="mr-1" /> Sous seuil
-          </Badge>
-        ) : (
-          <Badge tone="green">OK</Badge>
-        )}
-      </td>
-      <td className="px-5 py-3">
-        <div className="flex items-center justify-end gap-2">
-          <input
-            type="number"
-            min="0"
-            value={qty}
-            onChange={(e) => setQty(e.target.value)}
-            placeholder="Qté"
-            className="w-20 rounded-lg border border-brand/15 px-2 py-1.5 text-sm outline-none focus:border-brand"
-          />
-          <Button variant="ghost" onClick={() => apply('IN')} className="px-3 py-1.5" disabled={movement.isPending}>
-            + Entrée
-          </Button>
-          <Button variant="accent" onClick={() => apply('OUT')} className="px-3 py-1.5" disabled={movement.isPending}>
-            − Sortie
-          </Button>
-        </div>
-      </td>
-    </tr>
+    <>
+      <tr className="hover:bg-neutral-50">
+        <td className="px-5 py-3 font-semibold text-brand">{item.name}</td>
+        <td className="px-5 py-3">{item.quantityOnHand}</td>
+        <td className="px-5 py-3 text-neutral-500">{item.unit}</td>
+        <td className="px-5 py-3 text-neutral-500">{item.thresholdMin}</td>
+        <td className="px-5 py-3">
+          {item.isBelowMinimum ? (
+            <Badge tone="red">
+              <AlertTriangle size={12} className="mr-1" /> Stock faible
+            </Badge>
+          ) : (
+            <Badge tone="green">En Stock</Badge>
+          )}
+        </td>
+        <td className="px-5 py-3">
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="ghost" onClick={() => setEditing((v) => !v)} className="px-3 py-1.5 text-xs">
+              Modifier
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={order}
+              disabled={replenish.isPending || ordered}
+              className="border-accent-dark px-3 py-1.5 text-xs text-accent-dark hover:bg-accent/10"
+            >
+              {ordered ? (
+                <>
+                  <Check size={13} /> Demandé
+                </>
+              ) : (
+                'Commander'
+              )}
+            </Button>
+          </div>
+        </td>
+      </tr>
+      {editing && (
+        <tr className="bg-neutral-50">
+          <td colSpan={6} className="px-5 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-neutral-500">Mouvement de stock :</span>
+              <input
+                type="number"
+                min="0"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                placeholder="Qté"
+                className="w-20 rounded-lg border border-brand/15 px-2 py-1.5 text-sm outline-none focus:border-brand"
+              />
+              <Button variant="ghost" onClick={() => apply('IN')} className="px-3 py-1.5 text-xs" disabled={movement.isPending}>
+                + Entrée
+              </Button>
+              <Button variant="accent" onClick={() => apply('OUT')} className="px-3 py-1.5 text-xs" disabled={movement.isPending}>
+                − Sortie
+              </Button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -127,33 +177,31 @@ function CreateStockForm({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <Card>
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-6">
-        <Input
-          className="sm:col-span-2"
-          placeholder="Nom (ex. Tomates)"
-          required
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
-        <Input placeholder="Unité" required value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
-        <Input type="number" placeholder="Qté" required value={form.quantityOnHand} onChange={(e) => setForm({ ...form, quantityOnHand: e.target.value })} />
-        <Input type="number" placeholder="Seuil min" required value={form.thresholdMin} onChange={(e) => setForm({ ...form, thresholdMin: e.target.value })} />
-        <Input type="number" placeholder="Seuil max" required value={form.thresholdMax} onChange={(e) => setForm({ ...form, thresholdMax: e.target.value })} />
-        {create.isError && (
-          <p className="sm:col-span-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-            {(create.error as Error).message}
-          </p>
-        )}
-        <div className="flex gap-2 sm:col-span-6">
-          <Button type="submit" disabled={create.isPending}>
-            {create.isPending ? 'Création…' : 'Créer l’article'}
-          </Button>
-          <Button type="button" variant="ghost" onClick={onDone}>
-            Annuler
-          </Button>
-        </div>
-      </form>
-    </Card>
+    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-6">
+      <Input
+        className="sm:col-span-2"
+        placeholder="Nom (ex. Tomates)"
+        required
+        value={form.name}
+        onChange={(e) => setForm({ ...form, name: e.target.value })}
+      />
+      <Input placeholder="Unité" required value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+      <Input type="number" placeholder="Qté" required value={form.quantityOnHand} onChange={(e) => setForm({ ...form, quantityOnHand: e.target.value })} />
+      <Input type="number" placeholder="Seuil min" required value={form.thresholdMin} onChange={(e) => setForm({ ...form, thresholdMin: e.target.value })} />
+      <Input type="number" placeholder="Seuil max" required value={form.thresholdMax} onChange={(e) => setForm({ ...form, thresholdMax: e.target.value })} />
+      {create.isError && (
+        <p className="sm:col-span-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          {(create.error as Error).message}
+        </p>
+      )}
+      <div className="flex gap-2 sm:col-span-6">
+        <Button type="submit" disabled={create.isPending}>
+          {create.isPending ? 'Création…' : "Créer l'article"}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          Annuler
+        </Button>
+      </div>
+    </form>
   );
 }
