@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { StorefrontLayout } from '../layouts/StorefrontLayout';
 import { PortalLayout } from '../layouts/PortalLayout';
+import { AdminLayout } from '../layouts/AdminLayout';
 import { RequireRole } from '../components/RequireRole';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
@@ -18,6 +19,8 @@ import { ProfilePage } from '../pages/ProfilePage';
 import { ReservationsPage } from '../pages/ReservationsPage';
 import { PortalReservationsPage } from '../pages/PortalReservationsPage';
 import { SuppliersPage } from '../pages/SuppliersPage';
+import { AdminFranchisesPage } from '../pages/AdminFranchisesPage';
+import { ComingSoonPage } from '../pages/ComingSoonPage';
 
 /** Route table. Guards live in RequireRole; pages stay presentational. */
 export function AppRouter() {
@@ -81,6 +84,24 @@ export function AppRouter() {
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="reservations" element={<PortalReservationsPage />} />
         <Route path="orders" element={<PortalOrdersPage />} />
+      </Route>
+
+      {/* Head office portal (admin only) */}
+      <Route
+        path="/admin"
+        element={
+          <RequireRole role="admin">
+            <AdminLayout />
+          </RequireRole>
+        }
+      >
+        <Route index element={<ComingSoonPage title="Tableau de bord" subtitle="Vue globale du réseau de franchises" />} />
+        <Route path="stock" element={<ComingSoonPage title="Gestion des stocks" subtitle="Vue consolidée des stocks du réseau" />} />
+        <Route path="menu" element={<ComingSoonPage title="Gestion des Plats" subtitle="Catalogue plats du réseau" />} />
+        <Route path="promotions" element={<ComingSoonPage title="Promotions" subtitle="Campagnes promotionnelles du réseau" />} />
+        <Route path="personnel" element={<ComingSoonPage title="Personnel" subtitle="Effectifs du réseau" />} />
+        <Route path="franchises" element={<AdminFranchisesPage />} />
+        <Route path="settings" element={<ComingSoonPage title="Paramètres" />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

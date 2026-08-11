@@ -35,7 +35,7 @@ export function OrderDetailPage() {
   const currentIndex = TIMELINE.indexOf(order.status);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
       <Link to="/orders" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand">
         <ArrowLeft size={16} /> Mes commandes
       </Link>

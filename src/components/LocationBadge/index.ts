@@ -1,0 +1,1 @@
+export { LocationBadge } from './LocationBadge';

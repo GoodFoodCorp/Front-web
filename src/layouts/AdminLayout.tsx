@@ -1,20 +1,29 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Boxes, CalendarDays, LayoutDashboard, LogOut, ScrollText, Truck, UtensilsCrossed, Users } from 'lucide-react';
+import {
+  Boxes,
+  Building2,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Tag,
+  UtensilsCrossed,
+  Users,
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useLogout } from '../features/auth/hooks/useAuth';
 import logo from '../assets/logo.svg';
 
 const NAV = [
-  { to: '/portal', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
-  { to: '/portal/menu', label: 'Gestion des menus', icon: UtensilsCrossed, end: false },
-  { to: '/portal/stock', label: 'Gestion des stocks', icon: Boxes, end: false },
-  { to: '/portal/replenishments', label: 'Réapprovisionnement', icon: Truck, end: false },
-  { to: '/portal/orders', label: 'Commandes', icon: ScrollText, end: false },
-  { to: '/portal/reservations', label: 'Réservations', icon: CalendarDays, end: false },
-  { to: '/portal/suppliers', label: 'Fournisseurs', icon: Users, end: false },
+  { to: '/admin', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
+  { to: '/admin/stock', label: 'Gestion des stocks', icon: Boxes, end: false },
+  { to: '/admin/menu', label: 'Gestion des Plats', icon: UtensilsCrossed, end: false },
+  { to: '/admin/promotions', label: 'Promotions', icon: Tag, end: false },
+  { to: '/admin/personnel', label: 'Personnel', icon: Users, end: false },
+  { to: '/admin/franchises', label: 'Franchisés', icon: Building2, end: false },
+  { to: '/admin/settings', label: 'Paramètres', icon: Settings, end: false },
 ];
 
-export function PortalLayout() {
+export function AdminLayout() {
   const navigate = useNavigate();
   const logout = useLogout();
   const email = useAuthStore((s) => s.email);
@@ -26,7 +35,7 @@ export function PortalLayout() {
           <img src={logo} alt="Good Food" className="h-11 w-11" />
           <div>
             <p className="font-display text-lg font-extrabold leading-tight">Good Food</p>
-            <p className="text-xs text-white/60">Portail Franchisé</p>
+            <p className="text-xs text-white/60">Portail Siège</p>
           </div>
         </div>
 

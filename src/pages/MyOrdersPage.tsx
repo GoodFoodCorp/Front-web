@@ -11,11 +11,15 @@ export function MyOrdersPage() {
 
   if (isLoading) return <Spinner label="Chargement de vos commandes…" />;
   if (!orders || orders.length === 0) {
-    return <EmptyState icon="📦" title="Aucune commande" hint="Vos commandes apparaîtront ici." />;
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <EmptyState icon="📦" title="Aucune commande" hint="Vos commandes apparaîtront ici." />
+      </div>
+    );
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="mb-5 font-display text-2xl font-bold text-brand">Mes commandes</h1>
       <div className="space-y-3">
         {orders.map((order) => (

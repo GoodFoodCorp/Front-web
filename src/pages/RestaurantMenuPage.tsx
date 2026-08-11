@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Star } from 'lucide-react';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
@@ -9,15 +9,23 @@ import type { MenuItem } from '../features/catalog/types/menu.types';
 import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
 import { formatPrice } from '../utils/format';
 import { useCartStore } from '../store/cartStore';
+import { dishPhoto } from '../utils/images';
 
 const ALL = 'Tous';
 
 export function RestaurantMenuPage() {
   const { id: restaurantId } = useParams();
+  const [searchParams] = useSearchParams();
   const { data: menu, isLoading } = useRestaurantMenu(restaurantId);
   const { data: restaurants } = useRestaurants();
   const add = useCartStore((s) => s.add);
-  const [category, setCategory] = useState<string>(ALL);
+  const [category, setCategory] = useState<string>(searchParams.get('category') ?? ALL);
+  const query = (searchParams.get('q') ?? '').toLowerCase();
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('category');
+    if (fromUrl) setCategory(fromUrl);
+  }, [searchParams]);
 
   const restaurant = restaurants?.find((r) => r.id === restaurantId);
   const categories = useMemo(() => {
@@ -28,23 +36,29 @@ export function RestaurantMenuPage() {
 
   if (isLoading) return <Spinner label="Chargement du menu…" />;
 
-  const items = category === ALL ? menu ?? [] : (menu ?? []).filter((m) => m.category === category);
+  const items = (category === ALL ? menu ?? [] : (menu ?? []).filter((m) => m.category === category)).filter(
+    (m) => !query || m.name.toLowerCase().includes(query) || m.description.toLowerCase().includes(query),
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand">
-        <ArrowLeft size={16} /> Tous les restaurants
+        <ArrowLeft size={16} /> Retour à l'accueil
       </Link>
 
       <div className="brand-texture overflow-hidden rounded-3xl bg-brand px-8 py-8 text-white">
         <h1 className="font-display text-3xl font-extrabold sm:text-4xl">
           {restaurant?.name ?? 'Restaurant'}
         </h1>
-        <p className="mt-1 text-white/70">Composez votre commande dans ce restaurant.</p>
+        <p className="mt-1 text-white/70">
+          {query ? `Résultats pour « ${searchParams.get('q')} »` : 'Composez votre commande dans ce restaurant.'}
+        </p>
       </div>
 
       {!menu || menu.length === 0 ? (
         <EmptyState icon="🍽️" title="Menu vide" hint="Ce restaurant n'a pas encore d'articles." />
+      ) : items.length === 0 ? (
+        <EmptyState icon="🔍" title="Aucun résultat" hint="Essayez une autre recherche ou catégorie." />
       ) : (
         <>
           <div className="flex flex-wrap gap-2">
@@ -87,9 +101,10 @@ function MenuCard({ item, onAdd, index }: { item: MenuItem; onAdd: () => void; i
       className="group flex flex-col overflow-hidden rounded-2xl border border-brand/10 bg-white transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)]"
       style={{ animation: 'rise 0.5s both', animationDelay: `${index * 40}ms` }}
     >
-      <div className="grid h-36 place-items-center bg-gradient-to-br from-brand-pale to-accent/20 text-6xl">
-        {item.emoji}
-      </div>
+      <div
+        className="h-36 bg-cover bg-center"
+        style={{ backgroundImage: `url(${dishPhoto(item.name, item.category)})` }}
+      />
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-display font-bold text-brand">{item.name}</h3>

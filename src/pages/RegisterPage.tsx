@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useRegister } from '../features/auth/hooks/useAuth';
+import logo from '../assets/logo.svg';
 
 /** Client sign-up. On success the user is logged in and sent to the storefront. */
 export function RegisterPage() {
@@ -26,7 +27,7 @@ export function RegisterPage() {
       {/* Brand panel */}
       <div className="brand-texture relative hidden flex-col justify-between bg-brand p-12 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-accent text-2xl">🍔</span>
+          <img src={logo} alt="Good Food" className="h-14 w-14" />
           <span className="font-display text-2xl font-extrabold">Good Food</span>
         </div>
         <div>
@@ -46,7 +47,7 @@ export function RegisterPage() {
       <div className="flex items-center justify-center bg-cream p-6">
         <div className="w-full max-w-sm animate-[rise_0.5s]">
           <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand text-lg">🍔</span>
+            <img src={logo} alt="Good Food" className="h-11 w-11" />
             <span className="font-display text-xl font-extrabold text-brand">Good Food</span>
           </div>
 

@@ -4,10 +4,12 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useLogin } from '../features/auth/hooks/useAuth';
 import { decodeJwt } from '../store/authStore';
+import logo from '../assets/logo.svg';
 
 const DEMO_ACCOUNTS = [
   { label: 'Client', email: 'user@example.com', password: 'User1234!' },
   { label: 'Franchisé', email: 'manager@example.com', password: 'Manager123!' },
+  { label: 'Siège', email: 'admin@example.com', password: 'Admin123!' },
 ];
 
 export function LoginPage() {
@@ -27,7 +29,9 @@ export function LoginPage() {
         onSuccess: (data) => {
           const roles = (decodeJwt(data.access_token).role_slugs as string[]) ?? [];
           if (from) navigate(from, { replace: true });
-          else navigate(roles.includes('manager') ? '/portal' : '/', { replace: true });
+          else if (roles.includes('manager')) navigate('/portal', { replace: true });
+          else if (roles.includes('admin')) navigate('/admin', { replace: true });
+          else navigate('/', { replace: true });
         },
       },
     );
@@ -38,7 +42,7 @@ export function LoginPage() {
       {/* Brand panel */}
       <div className="brand-texture relative hidden flex-col justify-between bg-brand p-12 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-accent text-2xl">🍔</span>
+          <img src={logo} alt="Good Food" className="h-14 w-14" />
           <span className="font-display text-2xl font-extrabold">Good Food</span>
         </div>
         <div>
@@ -59,7 +63,7 @@ export function LoginPage() {
       <div className="flex items-center justify-center bg-cream p-6">
         <div className="w-full max-w-sm animate-[rise_0.5s]">
           <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand text-lg">🍔</span>
+            <img src={logo} alt="Good Food" className="h-11 w-11" />
             <span className="font-display text-xl font-extrabold text-brand">Good Food</span>
           </div>
 
