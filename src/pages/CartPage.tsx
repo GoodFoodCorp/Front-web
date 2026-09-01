@@ -111,7 +111,9 @@ export function CartPage() {
                   <div key={line.item.id} className="flex items-center gap-4 px-5 py-4">
                     <div
                       className="h-16 w-16 shrink-0 rounded-xl bg-cover bg-center"
-                      style={{ backgroundImage: `url(${dishPhoto(line.item.name, line.item.category)})` }}
+                      style={{
+                        backgroundImage: `url(${line.item.imageUrl || dishPhoto(line.item.name, line.item.category)})`,
+                      }}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">

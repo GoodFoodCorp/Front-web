@@ -14,12 +14,13 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { StockPage } from '../pages/StockPage';
 import { ReplenishmentsPage } from '../pages/ReplenishmentsPage';
 import { PortalOrdersPage } from '../pages/PortalOrdersPage';
-import { MenuManagementPage } from '../pages/MenuManagementPage';
+import { CatalogManagementPage } from '../pages/CatalogManagementPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { ReservationsPage } from '../pages/ReservationsPage';
 import { PortalReservationsPage } from '../pages/PortalReservationsPage';
 import { SuppliersPage } from '../pages/SuppliersPage';
 import { AdminFranchisesPage } from '../pages/AdminFranchisesPage';
+import { AdminSettingsPage } from '../pages/AdminSettingsPage';
 import { ComingSoonPage } from '../pages/ComingSoonPage';
 
 /** Route table. Guards live in RequireRole; pages stay presentational. */
@@ -78,7 +79,7 @@ export function AppRouter() {
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="menu" element={<MenuManagementPage />} />
+        <Route path="menu" element={<CatalogManagementPage />} />
         <Route path="stock" element={<StockPage />} />
         <Route path="replenishments" element={<ReplenishmentsPage />} />
         <Route path="suppliers" element={<SuppliersPage />} />
@@ -97,11 +98,11 @@ export function AppRouter() {
       >
         <Route index element={<ComingSoonPage title="Tableau de bord" subtitle="Vue globale du réseau de franchises" />} />
         <Route path="stock" element={<ComingSoonPage title="Gestion des stocks" subtitle="Vue consolidée des stocks du réseau" />} />
-        <Route path="menu" element={<ComingSoonPage title="Gestion des Plats" subtitle="Catalogue plats du réseau" />} />
+        <Route path="menu" element={<CatalogManagementPage />} />
         <Route path="promotions" element={<ComingSoonPage title="Promotions" subtitle="Campagnes promotionnelles du réseau" />} />
         <Route path="personnel" element={<ComingSoonPage title="Personnel" subtitle="Effectifs du réseau" />} />
         <Route path="franchises" element={<AdminFranchisesPage />} />
-        <Route path="settings" element={<ComingSoonPage title="Paramètres" />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

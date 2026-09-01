@@ -1,12 +1,22 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Boxes, CalendarDays, LayoutDashboard, LogOut, ScrollText, Truck, UtensilsCrossed, Users } from 'lucide-react';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import {
+  Boxes,
+  CalendarDays,
+  ExternalLink,
+  LayoutDashboard,
+  LogOut,
+  ScrollText,
+  Truck,
+  UtensilsCrossed,
+  Users,
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useLogout } from '../features/auth/hooks/useAuth';
 import logo from '../assets/logo.svg';
 
 const NAV = [
   { to: '/portal', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
-  { to: '/portal/menu', label: 'Gestion des menus', icon: UtensilsCrossed, end: false },
+  { to: '/portal/menu', label: 'Menus & Plats', icon: UtensilsCrossed, end: false },
   { to: '/portal/stock', label: 'Gestion des stocks', icon: Boxes, end: false },
   { to: '/portal/replenishments', label: 'Réapprovisionnement', icon: Truck, end: false },
   { to: '/portal/orders', label: 'Commandes', icon: ScrollText, end: false },
@@ -62,7 +72,12 @@ export function PortalLayout() {
 
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-8 py-4">
-          <div />
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-brand transition hover:bg-brand-pale"
+          >
+            <ExternalLink size={15} /> Voir le site
+          </Link>
           <span className="text-sm text-neutral-500">{email}</span>
         </header>
         <main className="flex-1 overflow-auto p-8">

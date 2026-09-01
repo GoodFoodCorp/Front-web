@@ -103,7 +103,7 @@ function MenuCard({ item, onAdd, index }: { item: MenuItem; onAdd: () => void; i
     >
       <div
         className="h-36 bg-cover bg-center"
-        style={{ backgroundImage: `url(${dishPhoto(item.name, item.category)})` }}
+        style={{ backgroundImage: `url(${item.imageUrl || dishPhoto(item.name, item.category)})` }}
       />
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
