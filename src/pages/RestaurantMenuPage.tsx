@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Star } from 'lucide-react';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
+import { FavoriteButton } from '../components/FavoriteButton';
 import { Spinner } from '../components/Spinner';
 import { useRestaurantMenu } from '../features/catalog/hooks/useMenu';
 import type { MenuItem } from '../features/catalog/types/menu.types';
@@ -47,9 +48,12 @@ export function RestaurantMenuPage() {
       </Link>
 
       <div className="brand-texture overflow-hidden rounded-3xl bg-brand px-8 py-8 text-white">
-        <h1 className="font-display text-3xl font-extrabold sm:text-4xl">
-          {restaurant?.name ?? 'Restaurant'}
-        </h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="font-display text-3xl font-extrabold sm:text-4xl">
+            {restaurant?.name ?? 'Restaurant'}
+          </h1>
+          <FavoriteButton kind="restaurant" targetId={restaurant?.id} />
+        </div>
         <p className="mt-1 text-white/70">
           {query ? `Résultats pour « ${searchParams.get('q')} »` : 'Composez votre commande dans ce restaurant.'}
         </p>
@@ -102,9 +106,11 @@ function MenuCard({ item, onAdd, index }: { item: MenuItem; onAdd: () => void; i
       style={{ animation: 'rise 0.5s both', animationDelay: `${index * 40}ms` }}
     >
       <div
-        className="h-36 bg-cover bg-center"
+        className="relative h-36 bg-cover bg-center"
         style={{ backgroundImage: `url(${dishPhoto(item.name, item.category)})` }}
-      />
+      >
+        <FavoriteButton kind="dish" targetId={item.id} className="absolute right-2 top-2" />
+      </div>
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-display font-bold text-brand">{item.name}</h3>
