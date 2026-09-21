@@ -47,7 +47,3 @@ export function demoMetricsFor(restaurantId: string): FranchiseDemoMetrics {
   };
 }
 
-export function placeholderHeadcount(seed: string | null): number {
-  if (!seed) return 0;
-  return seededRange(seed, 'headcount', 8, 25);
-}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { OAuthButtons } from '../features/auth/components/OAuthButtons';
 import { useRegister } from '../features/auth/hooks/useAuth';
 import logo from '../assets/logo.svg';
 
@@ -109,6 +110,8 @@ export function RegisterPage() {
               {register.isPending ? 'Création…' : 'Créer mon compte'}
             </Button>
           </form>
+
+          <OAuthButtons label="Ou s'inscrire avec" />
 
           <p className="mt-6 text-center text-sm text-neutral-500">
             Déjà un compte ?{' '}

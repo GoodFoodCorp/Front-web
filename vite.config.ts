@@ -13,6 +13,7 @@ const services = {
   franchise: 'http://localhost:8089',
   user: 'http://localhost:8087',
   reservation: 'http://localhost:8088',
+  analytics: 'http://localhost:8091',
 };
 
 export default defineConfig({
@@ -32,6 +33,7 @@ export default defineConfig({
       '/api/stocks': services.stock,
       '/api/replenishment-requests': services.stock,
       '/api/deliveries': services.delivery,
+      '/api/analytics': services.analytics,
       '/tracking': { target: services.delivery, ws: true },
     },
   },

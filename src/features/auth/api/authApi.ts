@@ -1,6 +1,11 @@
 import { http } from '../../../services/http';
 import type { Profile } from '../../../types/common.types';
-import type { LoginResponse } from '../types/auth.types';
+import type { LoginResponse, OAuthProvider } from '../types/auth.types';
+
+/** The browser is redirected here; it is not an XHR call. */
+export function oauthStartUrl(provider: string): string {
+  return `/api/auth/oauth/${provider}`;
+}
 
 export const authApi = {
   login: (email: string, password: string) =>
@@ -17,6 +22,10 @@ export const authApi = {
     }),
 
   me: () => http<Profile>('/api/user/me'),
+
+  /** Only the providers whose credentials are configured server-side, so the
+   *  login page never shows a button that cannot work. */
+  oauthProviders: () => http<OAuthProvider[]>('/api/auth/oauth/providers'),
 
   logout: (refreshToken: string) =>
     http('/api/auth/logout', {
