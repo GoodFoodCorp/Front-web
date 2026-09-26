@@ -16,10 +16,13 @@ export class ApiError extends Error {
  */
 export async function http<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().accessToken;
+  // FormData bodies (file uploads) need the browser's own multipart boundary
+  // header, so the default JSON content-type is skipped for them.
+  const isFormData = options.body instanceof FormData;
   const res = await fetch(path, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -32,5 +35,8 @@ export async function http<T>(path: string, options: RequestInit = {}): Promise<
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new ApiError(res.status, body?.error ?? `Erreur ${res.status}`);
   }
+  // 204 No Content (every DELETE in this app) has no body — res.json() would
+  // throw on the empty string, silently failing the calling mutation.
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }

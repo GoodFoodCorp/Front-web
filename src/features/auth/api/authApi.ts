@@ -23,4 +23,20 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ refresh_token: refreshToken }),
     }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    http<{ message: string }>('/api/user/me/password', {
+      method: 'PUT',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: newPassword,
+      }),
+    }),
+
+  deleteAccount: (password: string) =>
+    http<{ message: string }>('/api/user/me', {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    }),
 };

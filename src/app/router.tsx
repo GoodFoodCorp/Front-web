@@ -21,6 +21,14 @@ import { PortalReservationsPage } from '../pages/PortalReservationsPage';
 import { SuppliersPage } from '../pages/SuppliersPage';
 import { AdminFranchisesPage } from '../pages/AdminFranchisesPage';
 import { ComingSoonPage } from '../pages/ComingSoonPage';
+import { AboutPage } from '../pages/AboutPage';
+import { CareersPage } from '../pages/CareersPage';
+import { ContactPage } from '../pages/ContactPage';
+import { HelpCenterPage } from '../pages/HelpCenterPage';
+import { TermsPage } from '../pages/TermsPage';
+import { PrivacyPolicyPage } from '../pages/PrivacyPolicyPage';
+import { BecomeFranchiseePage } from '../pages/BecomeFranchiseePage';
+import { FranchiseLoginPage } from '../pages/FranchiseLoginPage';
 
 /** Route table. Guards live in RequireRole; pages stay presentational. */
 export function AppRouter() {
@@ -66,6 +74,16 @@ export function AppRouter() {
             </RequireRole>
           }
         />
+
+        {/* Marketing / static content */}
+        <Route path="about" element={<AboutPage />} />
+        <Route path="careers" element={<CareersPage />} />
+        <Route path="contact" element={<ContactPage />} />
+        <Route path="help" element={<HelpCenterPage />} />
+        <Route path="terms" element={<TermsPage />} />
+        <Route path="privacy" element={<PrivacyPolicyPage />} />
+        <Route path="become-franchisee" element={<BecomeFranchiseePage />} />
+        <Route path="franchise-login" element={<FranchiseLoginPage />} />
       </Route>
 
       {/* Franchisee portal (manager only) */}

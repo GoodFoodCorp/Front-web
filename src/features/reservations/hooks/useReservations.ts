@@ -6,6 +6,15 @@ export function useMyReservations() {
   return useQuery({ queryKey: ['reservations', 'mine'], queryFn: reservationsApi.listMine });
 }
 
+/** Which service hours are already full, for a restaurant on a given day. */
+export function useReservationAvailability(restaurantId: string, date: string | null) {
+  return useQuery({
+    queryKey: ['reservations', 'availability', restaurantId, date],
+    queryFn: () => reservationsApi.availability(restaurantId, date!),
+    enabled: !!restaurantId && !!date,
+  });
+}
+
 export function useRestaurantReservations() {
   return useQuery({
     queryKey: ['reservations', 'restaurant'],

@@ -1,9 +1,13 @@
 import { http } from '../../../services/http';
-import type { Reservation, ReservationForm, ReservationStatus } from '../types/reservation.types';
+import type { HourAvailability, Reservation, ReservationForm, ReservationStatus } from '../types/reservation.types';
 
 export const reservationsApi = {
   create: (form: ReservationForm) =>
     http<Reservation>('/api/reservations', { method: 'POST', body: JSON.stringify(form) }),
+
+  /** Fully booked service hours for a restaurant on a given day. */
+  availability: (restaurantId: string, date: string) =>
+    http<HourAvailability[]>(`/api/reservations/availability?restaurantId=${restaurantId}&date=${date}`),
 
   listMine: () => http<Reservation[]>('/api/reservations/mine'),
 

@@ -20,8 +20,8 @@ export function MyOrdersPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-5 font-display text-2xl font-bold text-brand">Mes commandes</h1>
-      <div className="space-y-3">
+      <h1 className="mb-6 font-display text-2xl font-bold text-brand">Mes commandes</h1>
+      <div className="space-y-5">
         {orders.map((order) => (
           <Link key={order.id} to={`/orders/${order.id}`}>
             <Card className="flex items-center gap-4 transition hover:border-brand/30 hover:shadow-[var(--shadow-lift)]">

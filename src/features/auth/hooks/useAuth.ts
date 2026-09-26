@@ -56,3 +56,22 @@ export function useLogout() {
     clearCart();
   };
 }
+
+/** Changing the password revokes every session server-side, so the local one
+ *  is cleared too — the user must sign back in with the new password. */
+export function useChangePassword() {
+  const logout = useLogout();
+  return useMutation({
+    mutationFn: ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) =>
+      authApi.changePassword(currentPassword, newPassword),
+    onSuccess: logout,
+  });
+}
+
+export function useDeleteAccount() {
+  const logout = useLogout();
+  return useMutation({
+    mutationFn: (password: string) => authApi.deleteAccount(password),
+    onSuccess: logout,
+  });
+}
