@@ -38,7 +38,7 @@ export function MyOrdersPage() {
                 </p>
               </div>
               <span className="font-display text-lg font-extrabold text-brand">
-                {formatPrice(order.total_amount_cents)}
+                {formatPrice(order.amount_due_cents)}
               </span>
             </Card>
           </Link>

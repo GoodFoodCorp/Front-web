@@ -23,6 +23,9 @@ export interface Order {
   restaurant_id: string;
   status: OrderStatus;
   total_amount_cents: number;
+  discount_cents?: number;
+  amount_due_cents: number;
+  promo_code?: string;
   delivery_address: string;
   items: OrderItem[];
   placed_at: string;
@@ -48,4 +51,5 @@ export interface CreateOrderPayload {
   restaurant_id: string;
   delivery_address: string;
   items: CreateOrderItem[];
+  promo_code?: string;
 }
