@@ -16,6 +16,7 @@ const services = {
   reservation: 'http://localhost:8088',
   analytics: 'http://localhost:8091',
   promo: 'http://localhost:8092',
+  assistant: 'http://localhost:8093',
 };
 
 export default defineConfig({
@@ -34,6 +35,7 @@ export default defineConfig({
       '/api/users': services.user,
       '/api/reservations': services.reservation,
       '/api/promos': services.promo,
+      '/api/chat': services.assistant,
       '/api/stocks': services.stock,
       '/api/replenishment-requests': services.stock,
       '/api/deliveries': services.delivery,
