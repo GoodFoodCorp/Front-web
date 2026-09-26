@@ -1,17 +1,29 @@
+import { Link } from 'react-router-dom';
 import logo from '../../assets/logo.svg';
 
 const COLUMNS = [
   {
     title: 'Entreprise',
-    links: ['À propos', 'Carrières', 'Contact'],
+    links: [
+      { label: 'À propos', to: '/about' },
+      { label: 'Carrières', to: '/careers' },
+      { label: 'Contact', to: '/contact' },
+    ],
   },
   {
     title: 'Support',
-    links: ["Centre d'aide", "Conditions d'utilisation", 'Politique de confidentialité'],
+    links: [
+      { label: "Centre d'aide", to: '/help' },
+      { label: "Conditions d'utilisation", to: '/terms' },
+      { label: 'Politique de confidentialité', to: '/privacy' },
+    ],
   },
   {
     title: 'Franchise',
-    links: ['Devenir franchisé', 'Connexion franchise'],
+    links: [
+      { label: 'Devenir franchisé', to: '/become-franchisee' },
+      { label: 'Connexion franchise', to: '/franchise-login' },
+    ],
   },
 ];
 
@@ -33,10 +45,10 @@ export function Footer() {
             <h3 className="font-display text-sm font-bold">{col.title}</h3>
             <ul className="mt-3 space-y-2">
               {col.links.map((link) => (
-                <li key={link}>
-                  <a href="#" className="text-sm text-white/60 transition hover:text-white">
-                    {link}
-                  </a>
+                <li key={link.label}>
+                  <Link to={link.to} className="text-sm text-white/60 transition hover:text-white">
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>

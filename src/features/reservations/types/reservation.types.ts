@@ -20,3 +20,9 @@ export interface ReservationForm {
   reservationAt: string;
   notes?: string;
 }
+
+/** Whether a given service hour is already fully booked. */
+export interface HourAvailability {
+  hour: number;
+  full: boolean;
+}

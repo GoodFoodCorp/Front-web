@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
@@ -16,8 +16,14 @@ import { useCartStore } from '../store/cartStore';
 import { useLocationStore } from '../store/locationStore';
 import { useLogout } from '../features/auth/hooks/useAuth';
 import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
+import { useRestaurantMenu } from '../features/catalog/hooks/useMenu';
+import type { MenuItem } from '../features/catalog/types/menu.types';
 import { Footer } from '../components/Footer';
 import logo from '../assets/logo.svg';
+import { formatPrice } from '../utils/format';
+import { dishPhoto } from '../utils/images';
+
+const MAX_SUGGESTIONS = 5;
 
 export function StorefrontLayout() {
   const navigate = useNavigate();
@@ -28,6 +34,7 @@ export function StorefrontLayout() {
   const { restaurantId, setRestaurantId } = useLocationStore();
 
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
@@ -38,12 +45,31 @@ export function StorefrontLayout() {
     }
   }, [restaurantId, restaurants, setRestaurantId]);
 
-  const current = restaurants?.find((r) => r.id === restaurantId);
+  const current = restaurants?.find((r) => r.id === restaurantId) ?? restaurants?.[0];
+  const { data: currentMenu } = useRestaurantMenu(current?.id);
+
+  const query = search.trim().toLowerCase();
+  const suggestions = useMemo(() => {
+    if (!query) return [];
+    return (currentMenu ?? []).filter(
+      (item) => item.name.toLowerCase().includes(query) || item.category.toLowerCase().includes(query),
+    );
+  }, [currentMenu, query]);
+
+  const goToSearch = (q: string) => {
+    if (!current) return;
+    setSearchOpen(false);
+    navigate(`/restaurants/${current.id}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+  };
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!current) return;
-    navigate(`/restaurants/${current.id}${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ''}`);
+    goToSearch(search.trim());
+  };
+
+  const pickSuggestion = (item: MenuItem) => {
+    setSearch(item.name);
+    goToSearch(item.name);
   };
 
   return (
@@ -55,17 +81,76 @@ export function StorefrontLayout() {
             <span className="hidden font-display text-xl font-extrabold sm:inline">Good Food</span>
           </Link>
 
-          <form onSubmit={submitSearch} className="hidden max-w-md flex-1 md:block">
-            <div className="flex items-center gap-2 rounded-xl bg-white/95 px-4 py-2">
-              <Search size={16} className="shrink-0 text-neutral-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher..."
-                className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-neutral-400"
-              />
-            </div>
-          </form>
+          <div className="relative hidden max-w-md flex-1 md:block">
+            <form onSubmit={submitSearch}>
+              <div className="flex items-center gap-2 rounded-xl bg-white/95 px-4 py-2">
+                <button
+                  type="submit"
+                  aria-label="Rechercher"
+                  className="shrink-0 text-neutral-400 transition hover:text-brand"
+                >
+                  <Search size={16} />
+                </button>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onFocus={() => setSearchOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setSearchOpen(false);
+                  }}
+                  placeholder="Rechercher..."
+                  className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-neutral-400"
+                />
+              </div>
+            </form>
+
+            {searchOpen && query && (
+              <>
+                <button
+                  aria-label="Fermer"
+                  className="fixed inset-0 z-30 cursor-default"
+                  onClick={() => setSearchOpen(false)}
+                />
+                <div className="animate-dropdown absolute left-0 right-0 z-40 mt-2 origin-top overflow-hidden rounded-xl border border-brand/10 bg-white py-1 text-ink shadow-[var(--shadow-lift)]">
+                  {suggestions.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-neutral-400">
+                      Aucun plat trouvé pour « {search.trim()} »
+                    </p>
+                  ) : (
+                    <>
+                      {suggestions.slice(0, MAX_SUGGESTIONS).map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => pickSuggestion(item)}
+                          className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-brand-pale"
+                        >
+                          <div
+                            className="h-10 w-10 shrink-0 rounded-lg bg-cover bg-center"
+                            style={{ backgroundImage: `url(${dishPhoto(item.name, item.category)})` }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-brand">{item.name}</p>
+                            <p className="truncate text-xs text-neutral-400">{item.category}</p>
+                          </div>
+                          <span className="shrink-0 text-sm font-bold text-brand">
+                            {formatPrice(item.priceCents)}
+                          </span>
+                        </button>
+                      ))}
+                      {suggestions.length > MAX_SUGGESTIONS && (
+                        <button
+                          onClick={() => goToSearch(search.trim())}
+                          className="w-full border-t border-brand/10 px-4 py-2.5 text-left text-sm font-semibold text-brand transition hover:bg-brand-pale"
+                        >
+                          Voir les {suggestions.length} résultats pour « {search.trim()} »
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-3">
             {/* Location / restaurant picker */}

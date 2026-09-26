@@ -12,3 +12,9 @@ export function formatDateTime(iso: string): string {
     minute: '2-digit',
   });
 }
+
+/** Share of orders that were cancelled, for a KPI tile hint. */
+export function formatCancellationRate(cancelled: number, total: number): string | undefined {
+  if (total === 0) return undefined;
+  return `${Math.round((cancelled / total) * 100)}% des commandes`;
+}

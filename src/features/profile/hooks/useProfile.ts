@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { profileApi } from '../api/profileApi';
-import type { AddressForm, ProfileForm } from '../types/profile.types';
+import type { AddressForm, NotificationPreferences, ProfileForm } from '../types/profile.types';
 
 export function useMyProfile() {
   return useQuery({ queryKey: ['profile'], queryFn: profileApi.me });
@@ -11,6 +11,26 @@ export function useUpdateProfile() {
   return useMutation({
     mutationFn: (form: ProfileForm) => profileApi.update(form),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['profile'] }),
+  });
+}
+
+export function useUploadAvatar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => profileApi.uploadAvatar(file),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['profile'] }),
+  });
+}
+
+export function useNotificationPreferences() {
+  return useQuery({ queryKey: ['profile', 'notifications'], queryFn: profileApi.getNotifications });
+}
+
+export function useUpdateNotificationPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (prefs: NotificationPreferences) => profileApi.updateNotifications(prefs),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['profile', 'notifications'] }),
   });
 }
 

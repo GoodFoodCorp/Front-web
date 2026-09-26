@@ -5,6 +5,8 @@ export interface UserProfile {
   first_name: string;
   last_name: string;
   phone: string;
+  avatar_url: string;
+  age: number | null;
   updated_at: string;
 }
 
@@ -12,6 +14,13 @@ export interface ProfileForm {
   first_name: string;
   last_name: string;
   phone: string;
+  age: number | null;
+}
+
+export interface NotificationPreferences {
+  email_orders: boolean;
+  email_promos: boolean;
+  sms_orders: boolean;
 }
 
 export interface Address {

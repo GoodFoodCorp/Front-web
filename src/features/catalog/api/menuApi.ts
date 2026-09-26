@@ -23,6 +23,13 @@ export const menuApi = {
     return dtos.map(toMenuItem);
   },
 
+  /** Public: resolves a set of item ids (e.g. a customer's favorited dishes). */
+  byIds: async (ids: string[]): Promise<MenuItem[]> => {
+    if (ids.length === 0) return [];
+    const dtos = await http<MenuItemDto[]>(`/api/menu/by-ids?ids=${ids.join(',')}`);
+    return dtos.map(toMenuItem);
+  },
+
   /** Manager: own restaurant's items, incl. unavailable. */
   listMine: async (): Promise<MenuItem[]> => {
     const dtos = await http<MenuItemDto[]>('/api/menu/manage');
