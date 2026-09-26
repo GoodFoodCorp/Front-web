@@ -5,6 +5,8 @@ import { AdminLayout } from '../layouts/AdminLayout';
 import { RequireRole } from '../components/RequireRole';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
+import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
+import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { RestaurantsPage } from '../pages/RestaurantsPage';
 import { RestaurantMenuPage } from '../pages/RestaurantMenuPage';
 import { CartPage } from '../pages/CartPage';
@@ -36,6 +38,7 @@ export function AppRouter() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
       {/* Storefront (public catalog, protected orders) */}
       <Route element={<StorefrontLayout />}>
@@ -113,7 +116,7 @@ export function AppRouter() {
           </RequireRole>
         }
       >
-        <Route index element={<ComingSoonPage title="Tableau de bord" subtitle="Vue globale du réseau de franchises" />} />
+        <Route index element={<AdminDashboardPage />} />
         <Route path="stock" element={<ComingSoonPage title="Gestion des stocks" subtitle="Vue consolidée des stocks du réseau" />} />
         <Route path="menu" element={<ComingSoonPage title="Gestion des Plats" subtitle="Catalogue plats du réseau" />} />
         <Route path="promotions" element={<ComingSoonPage title="Promotions" subtitle="Campagnes promotionnelles du réseau" />} />

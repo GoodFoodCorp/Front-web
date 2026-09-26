@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { authApi } from '../api/authApi';
 import type { LoginResponse } from '../types/auth.types';
 import { decodeJwt, useAuthStore } from '../../../store/authStore';
@@ -7,7 +7,7 @@ import { useCartStore } from '../../../store/cartStore';
 type Credentials = { email: string; password: string };
 
 /** Hydrates the session store from a login response's JWT. */
-function useHydrateSession() {
+export function useHydrateSession() {
   const setSession = useAuthStore((s) => s.setSession);
   return (data: LoginResponse) => {
     const claims = decodeJwt(data.access_token);
@@ -20,6 +20,17 @@ function useHydrateSession() {
       roles: (claims.role_slugs as string[]) ?? [],
     });
   };
+}
+
+/** Providers enabled server-side. Fails soft: if auth-service can't answer,
+ *  the login page simply shows no social buttons. */
+export function useOAuthProviders() {
+  return useQuery({
+    queryKey: ['auth', 'oauth-providers'],
+    queryFn: authApi.oauthProviders,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
 }
 
 /** Login mutation: authenticates then hydrates the session store from the JWT. */
