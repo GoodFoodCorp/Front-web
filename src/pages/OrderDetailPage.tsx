@@ -109,9 +109,21 @@ export function OrderDetailPage() {
             </div>
           ))}
         </div>
+        <div className="space-y-1.5 border-t border-brand/10 pt-3 text-sm">
+          <div className="flex items-center justify-between text-neutral-500">
+            <span>Sous-total</span>
+            <span>{formatPrice(order.total_amount_cents)}</span>
+          </div>
+          {!!order.discount_cents && (
+            <div className="flex items-center justify-between text-brand">
+              <span>Réduction{order.promo_code ? ` (${order.promo_code})` : ''}</span>
+              <span>−{formatPrice(order.discount_cents)}</span>
+            </div>
+          )}
+        </div>
         <div className="flex items-center justify-between border-t border-brand/10 pt-3 font-display text-lg font-extrabold text-brand">
           <span>Total</span>
-          <span>{formatPrice(order.total_amount_cents)}</span>
+          <span>{formatPrice(order.amount_due_cents)}</span>
         </div>
       </Card>
     </div>

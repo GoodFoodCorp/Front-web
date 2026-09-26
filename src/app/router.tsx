@@ -20,6 +20,7 @@ import { ReservationsPage } from '../pages/ReservationsPage';
 import { PortalReservationsPage } from '../pages/PortalReservationsPage';
 import { SuppliersPage } from '../pages/SuppliersPage';
 import { AdminFranchisesPage } from '../pages/AdminFranchisesPage';
+import { AdminPromotionsPage } from '../pages/AdminPromotionsPage';
 import { ComingSoonPage } from '../pages/ComingSoonPage';
 
 /** Route table. Guards live in RequireRole; pages stay presentational. */
@@ -98,7 +99,7 @@ export function AppRouter() {
         <Route index element={<ComingSoonPage title="Tableau de bord" subtitle="Vue globale du réseau de franchises" />} />
         <Route path="stock" element={<ComingSoonPage title="Gestion des stocks" subtitle="Vue consolidée des stocks du réseau" />} />
         <Route path="menu" element={<ComingSoonPage title="Gestion des Plats" subtitle="Catalogue plats du réseau" />} />
-        <Route path="promotions" element={<ComingSoonPage title="Promotions" subtitle="Campagnes promotionnelles du réseau" />} />
+        <Route path="promotions" element={<AdminPromotionsPage />} />
         <Route path="personnel" element={<ComingSoonPage title="Personnel" subtitle="Effectifs du réseau" />} />
         <Route path="franchises" element={<AdminFranchisesPage />} />
         <Route path="settings" element={<ComingSoonPage title="Paramètres" />} />
