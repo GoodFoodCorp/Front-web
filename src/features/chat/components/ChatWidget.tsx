@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, Send, X } from 'lucide-react';
+import { MessageCircle, RotateCcw, Send, X } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { useAuthStore } from '../../../store/authStore';
@@ -17,9 +17,33 @@ export function ChatWidget() {
   const isLoggedIn = !!useAuthStore((s) => s.accessToken);
   const isOpen = useChatStore((s) => s.isOpen);
   const toggle = useChatStore((s) => s.toggle);
+  const reset = useChatStore((s) => s.reset);
   const { messages, sendMessage, isPending } = useChat();
   const [draft, setDraft] = useState('');
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const confirmingResetRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const resetClick = () => {
+    if (messages.length === 0) return;
+    // Guard on a ref, not the confirmingReset state: two clicks fired in
+    // quick succession can both read the same stale state closure before
+    // React re-renders, which would make the second click re-arm the
+    // confirmation instead of actually resetting.
+    if (!confirmingResetRef.current) {
+      confirmingResetRef.current = true;
+      setConfirmingReset(true);
+      setTimeout(() => {
+        confirmingResetRef.current = false;
+        setConfirmingReset(false);
+      }, 3000);
+      return;
+    }
+    confirmingResetRef.current = false;
+    setConfirmingReset(false);
+    reset();
+    setConfirmingReset(false);
+  };
 
   useEffect(() => {
     if (isOpen) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -40,13 +64,26 @@ export function ChatWidget() {
         <div className="flex h-[28rem] w-[22rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border border-brand/10 bg-white shadow-[var(--shadow-lift)]">
           <div className="flex items-center justify-between bg-brand px-4 py-3">
             <p className="font-display font-bold text-white">Assistant Good Food</p>
-            <button
-              onClick={toggle}
-              aria-label="Fermer le chat"
-              className="grid h-7 w-7 place-items-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-1.5">
+              {confirmingReset && <span className="text-xs text-white/80">Sûr ? Recliquez</span>}
+              <button
+                onClick={resetClick}
+                aria-label="Réinitialiser la conversation"
+                title="Réinitialiser la conversation"
+                className={`grid h-7 w-7 place-items-center rounded-lg transition hover:bg-white/10 ${
+                  confirmingReset ? 'text-accent' : 'text-white/80 hover:text-white'
+                }`}
+              >
+                <RotateCcw size={15} />
+              </button>
+              <button
+                onClick={toggle}
+                aria-label="Fermer le chat"
+                className="grid h-7 w-7 place-items-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
