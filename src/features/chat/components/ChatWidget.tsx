@@ -51,7 +51,7 @@ export function ChatWidget() {
             {messages.map((m, i) => (
               <ChatBubble key={i} role={m.role} content={m.content} />
             ))}
-            {isPending && <ChatBubble role="assistant" content="…" />}
+            {isPending && <TypingIndicator />}
           </div>
 
           <form onSubmit={submit} className="flex items-center gap-2 border-t border-brand/10 p-3">
@@ -76,6 +76,23 @@ export function ChatWidget() {
       >
         {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
       </button>
+    </div>
+  );
+}
+
+/** "L'assistant écrit…" — three dots bouncing in sequence. */
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div className="flex items-center gap-1 rounded-2xl bg-brand-pale px-4 py-3">
+        {[0, 150, 300].map((delayMs) => (
+          <span
+            key={delayMs}
+            className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand/50"
+            style={{ animationDelay: `${delayMs}ms` }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
