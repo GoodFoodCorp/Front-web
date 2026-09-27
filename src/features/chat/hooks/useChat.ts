@@ -3,12 +3,12 @@ import { useMatch } from 'react-router-dom';
 import { chatApi } from '../api/chatApi';
 import { useChatStore } from '../../../store/chatStore';
 import { useCartStore } from '../../../store/cartStore';
-import type { ChatMessage } from '../types/chat.types';
 
 const FALLBACK_REPLY = "Désolé, une erreur est survenue en essayant de vous répondre. Réessayez dans un instant.";
 
 /** Owns the send flow: appends the user's message, calls assistant-service
- *  with the full history (it is stateless), then appends the reply. */
+ *  with the full history (it is stateless), then appends the reply — along
+ *  with an OrderProposal when the assistant prepared one. */
 export function useChat() {
   const messages = useChatStore((s) => s.messages);
   const addMessage = useChatStore((s) => s.addMessage);
@@ -20,18 +20,25 @@ export function useChat() {
   const restaurantId = viewedRestaurant?.params.id ?? cartRestaurantId;
 
   const mutation = useMutation({
-    mutationFn: (nextMessages: ChatMessage[]) =>
+    mutationFn: (nextMessages: { role: 'user' | 'assistant'; content: string }[]) =>
       chatApi.sendMessage({ messages: nextMessages, restaurant_id: restaurantId ?? undefined }),
   });
 
   const sendMessage = (content: string) => {
     const trimmed = content.trim();
     if (!trimmed) return;
-    const userMessage: ChatMessage = { role: 'user', content: trimmed };
-    const nextMessages = [...messages, userMessage];
-    addMessage(userMessage);
+    const nextMessages = [...messages, { role: 'user' as const, content: trimmed }].map(
+      ({ role, content }) => ({ role, content }),
+    );
+    addMessage({ role: 'user', content: trimmed });
     mutation.mutate(nextMessages, {
-      onSuccess: (reply) => addMessage({ role: 'assistant', content: reply.content }),
+      onSuccess: (reply) =>
+        addMessage({
+          role: 'assistant',
+          content: reply.content,
+          proposal: reply.proposal,
+          proposalStatus: reply.proposal ? 'pending' : undefined,
+        }),
       onError: () => addMessage({ role: 'assistant', content: FALLBACK_REPLY }),
     });
   };

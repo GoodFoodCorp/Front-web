@@ -4,7 +4,10 @@ import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
+import { useCheckout } from '../../orders/hooks/useOrders';
+import { formatPrice } from '../../../utils/format';
 import { useChat } from '../hooks/useChat';
+import type { ChatMessage } from '../types/chat.types';
 
 const GREETING = "Bonjour ! Je suis l'assistant Good Food. Posez-moi une question sur votre commande, un menu, ou le service — je suis là pour vous aider.";
 
@@ -48,8 +51,11 @@ export function ChatWidget() {
 
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
             <ChatBubble role="assistant" content={GREETING} />
-            {messages.map((m, i) => (
-              <ChatBubble key={i} role={m.role} content={m.content} />
+            {messages.map((m) => (
+              <div key={m.id}>
+                <ChatBubble role={m.role} content={m.content} />
+                {m.proposal && m.proposalStatus === 'pending' && <OrderProposalCard message={m} />}
+              </div>
             ))}
             {isPending && <TypingIndicator />}
           </div>
@@ -76,6 +82,86 @@ export function ChatWidget() {
       >
         {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
       </button>
+    </div>
+  );
+}
+
+/** The assistant only ever *proposes* an order (see assistant-service) — it
+ *  is placed for real here, through the exact same checkout flow the cart
+ *  uses, only once the customer clicks "Confirmer". */
+function OrderProposalCard({ message }: { message: ChatMessage }) {
+  const proposal = message.proposal;
+  const setProposalStatus = useChatStore((s) => s.setProposalStatus);
+  const addMessage = useChatStore((s) => s.addMessage);
+  const checkout = useCheckout();
+  if (!proposal) return null;
+
+  const confirm = () => {
+    checkout.mutate(
+      {
+        restaurant_id: proposal.restaurant_id,
+        delivery_address: proposal.delivery_address,
+        items: proposal.items.map((it) => ({
+          menu_item_id: it.menu_item_id,
+          menu_item_name: it.menu_item_name,
+          quantity: it.quantity,
+          unit_price_cents: it.unit_price_cents,
+        })),
+      },
+      {
+        onSuccess: (order) => {
+          setProposalStatus(message.id, 'confirmed');
+          addMessage({
+            role: 'assistant',
+            content: `Commande passée avec succès ! Numéro de commande #${order.id.slice(0, 8)}.`,
+          });
+        },
+        onError: () => {
+          addMessage({
+            role: 'assistant',
+            content: "Désolé, la commande n'a pas pu être passée. Réessayez depuis le panier ou dans un instant.",
+          });
+        },
+      },
+    );
+  };
+
+  const cancel = () => {
+    setProposalStatus(message.id, 'cancelled');
+    addMessage({ role: 'assistant', content: "D'accord, commande annulée." });
+  };
+
+  return (
+    <div className="mt-1.5 space-y-2 rounded-2xl border border-brand/15 bg-white p-3">
+      <ul className="space-y-1 text-sm">
+        {proposal.items.map((it) => (
+          <li key={it.menu_item_id} className="flex justify-between gap-2">
+            <span>
+              {it.quantity}× {it.menu_item_name}
+            </span>
+            <span className="shrink-0 text-neutral-500">{formatPrice(it.unit_price_cents * it.quantity)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex justify-between border-t border-brand/10 pt-1.5 text-sm font-semibold text-brand">
+        <span>Total</span>
+        <span>{formatPrice(proposal.total_amount_cents)}</span>
+      </div>
+      {checkout.isError && <p className="text-xs text-red-600">{(checkout.error as Error).message}</p>}
+      <div className="flex gap-2">
+        <Button type="button" onClick={confirm} disabled={checkout.isPending} className="flex-1 py-1.5 text-xs">
+          {checkout.isPending ? 'Commande en cours…' : 'Confirmer la commande'}
+        </Button>
+        <Button
+          type="button"
+          onClick={cancel}
+          variant="ghost"
+          disabled={checkout.isPending}
+          className="flex-1 py-1.5 text-xs"
+        >
+          Annuler
+        </Button>
+      </div>
     </div>
   );
 }
