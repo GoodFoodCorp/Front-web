@@ -107,7 +107,7 @@ function MenuCard({ item, onAdd, index }: { item: MenuItem; onAdd: () => void; i
     >
       <div
         className="relative h-36 bg-cover bg-center"
-        style={{ backgroundImage: `url(${dishPhoto(item.name, item.category)})` }}
+        style={{ backgroundImage: `url(${item.imageUrl || dishPhoto(item.name, item.category)})` }}
       >
         <FavoriteButton kind="dish" targetId={item.id} className="absolute right-2 top-2" />
       </div>

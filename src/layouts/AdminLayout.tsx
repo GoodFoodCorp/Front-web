@@ -1,7 +1,8 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Boxes,
   Building2,
+  ExternalLink,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -16,7 +17,7 @@ import logo from '../assets/logo.svg';
 const NAV = [
   { to: '/admin', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
   { to: '/admin/stock', label: 'Gestion des stocks', icon: Boxes, end: false },
-  { to: '/admin/menu', label: 'Gestion des Plats', icon: UtensilsCrossed, end: false },
+  { to: '/admin/menu', label: 'Menus & Plats', icon: UtensilsCrossed, end: false },
   { to: '/admin/promotions', label: 'Promotions', icon: Tag, end: false },
   { to: '/admin/personnel', label: 'Personnel', icon: Users, end: false },
   { to: '/admin/franchises', label: 'Franchisés', icon: Building2, end: false },
@@ -71,7 +72,12 @@ export function AdminLayout() {
 
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-8 py-4">
-          <div />
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-brand transition hover:bg-brand-pale"
+          >
+            <ExternalLink size={15} /> Voir le site
+          </Link>
           <span className="text-sm text-neutral-500">{email}</span>
         </header>
         <main className="flex-1 overflow-auto p-8">
