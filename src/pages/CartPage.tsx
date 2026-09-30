@@ -8,32 +8,29 @@ import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useCheckout } from '../features/orders/hooks/useOrders';
 import { useMyAddresses } from '../features/profile/hooks/useProfile';
+import { usePreviewPromoCode } from '../features/promos/hooks/usePromos';
+import { ApiError } from '../services/http';
 import { dishPhoto } from '../utils/images';
 
 const FREE_DELIVERY_THRESHOLD_CENTS = 3000;
 const DELIVERY_FEE_CENTS = 399;
 
-const PROMO_CODES: Record<string, number> = {
-  BIENVENUE20: 0.2,
-  WELCOME20: 0.2,
-  GOODFOOD10: 0.1,
-};
-
 export function CartPage() {
   const navigate = useNavigate();
   const { lines, restaurantId, restaurantName, add, decrement, remove, totalCents } = useCartStore();
   const checkout = useCheckout();
+  const previewPromo = usePreviewPromoCode();
   const isLoggedIn = !!useAuthStore((s) => s.accessToken);
   const { data: addresses } = useMyAddresses();
   const defaultAddress = addresses?.find((a) => a.is_default) ?? addresses?.[0];
 
   const [promoInput, setPromoInput] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
-  const [promoError, setPromoError] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number } | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
   const [manualAddress, setManualAddress] = useState('');
 
   const subtotal = totalCents();
-  const discount = appliedPromo ? Math.round(subtotal * PROMO_CODES[appliedPromo]) : 0;
+  const discount = appliedPromo ? Math.round((subtotal * appliedPromo.percentOff) / 100) : 0;
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD_CENTS ? 0 : DELIVERY_FEE_CENTS;
   const total = Math.max(0, subtotal - discount) + deliveryFee;
 
@@ -41,13 +38,20 @@ export function CartPage() {
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
-    if (PROMO_CODES[code]) {
-      setAppliedPromo(code);
-      setPromoError(false);
-    } else {
-      setAppliedPromo(null);
-      setPromoError(true);
-    }
+    if (!code) return;
+    previewPromo.mutate(
+      { code, amountCents: subtotal },
+      {
+        onSuccess: (preview) => {
+          setAppliedPromo({ code: preview.code, percentOff: preview.percent_off });
+          setPromoError(null);
+        },
+        onError: (err) => {
+          setAppliedPromo(null);
+          setPromoError(err instanceof ApiError ? err.message : 'Code promo invalide.');
+        },
+      },
+    );
   };
 
   const placeOrder = () => {
@@ -66,6 +70,7 @@ export function CartPage() {
           quantity: l.quantity,
           unit_price_cents: l.item.priceCents,
         })),
+        promo_code: appliedPromo?.code,
       },
       { onSuccess: (order) => navigate(`/orders/${order.id}`, { state: { justPaid: true } }) },
     );
@@ -207,19 +212,19 @@ export function CartPage() {
                     value={promoInput}
                     onChange={(e) => {
                       setPromoInput(e.target.value);
-                      setPromoError(false);
+                      setPromoError(null);
                     }}
                     placeholder="Entrez votre code"
                     className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
                   />
-                  <Button onClick={applyPromo} className="shrink-0 px-4">
-                    Appliquer
+                  <Button onClick={applyPromo} disabled={previewPromo.isPending} className="shrink-0 px-4">
+                    {previewPromo.isPending ? '…' : 'Appliquer'}
                   </Button>
                 </div>
-                {promoError && <p className="mt-1.5 text-xs text-red-600">Code promo invalide.</p>}
+                {promoError && <p className="mt-1.5 text-xs text-red-600">{promoError}</p>}
                 {appliedPromo && (
                   <p className="mt-1.5 text-xs font-semibold text-brand">
-                    Code {appliedPromo} appliqué (-{PROMO_CODES[appliedPromo] * 100}%)
+                    Code {appliedPromo.code} appliqué (-{appliedPromo.percentOff}%)
                   </p>
                 )}
               </div>
@@ -265,14 +270,6 @@ export function CartPage() {
                 En passant commande, vous acceptez nos conditions d'utilisation et notre politique de
                 confidentialité.
               </p>
-
-              <div className="rounded-xl bg-brand-pale p-3 text-xs text-brand">
-                <p className="font-semibold">Codes promos disponibles :</p>
-                <ul className="mt-1 space-y-0.5">
-                  <li>• GOODFOOD10 - 10% de réduction</li>
-                  <li>• WELCOME20 - 20% de réduction</li>
-                </ul>
-              </div>
             </div>
           </div>
         </div>

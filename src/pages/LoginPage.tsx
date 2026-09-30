@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { OAuthButtons } from '../features/auth/components/OAuthButtons';
 import { useLogin } from '../features/auth/hooks/useAuth';
 import { decodeJwt } from '../store/authStore';
 import logo from '../assets/logo.svg';
@@ -106,6 +107,8 @@ export function LoginPage() {
               {login.isPending ? 'Connexion…' : 'Se connecter'}
             </Button>
           </form>
+
+          <OAuthButtons />
 
           <p className="mt-6 text-center text-sm text-neutral-500">
             Pas encore de compte ?{' '}

@@ -1,18 +1,22 @@
 import { useState } from 'react';
 import { CalendarDays, Users } from 'lucide-react';
 import { Button } from '../components/Button';
+import { Calendar } from '../components/Calendar';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
 import { Spinner } from '../components/Spinner';
+import { TimeSlotPicker } from '../components/TimeSlotPicker';
 import { ReservationStatusBadge } from '../features/reservations/components/ReservationStatusBadge';
 import {
   useCancelMyReservation,
   useCreateReservation,
   useMyReservations,
+  useReservationAvailability,
 } from '../features/reservations/hooks/useReservations';
 import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
 import { formatDateTime } from '../utils/format';
+import { reservationSlotGroups } from '../utils/reservationSlots';
 
 /** Customer view: book a table and follow your own reservations. */
 export function ReservationsPage() {
@@ -26,13 +30,14 @@ export function ReservationsPage() {
     customerName: '',
     phone: '',
     partySize: 2,
-    date: '',
-    time: '19:30',
+    date: null as string | null,
+    time: null as string | null,
     notes: '',
   });
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.date || !form.time) return;
     create.mutate(
       {
         restaurantId: form.restaurantId,
@@ -42,11 +47,22 @@ export function ReservationsPage() {
         reservationAt: new Date(`${form.date}T${form.time}:00`).toISOString(),
         notes: form.notes,
       },
-      { onSuccess: () => setForm({ ...form, notes: '' }) },
+      { onSuccess: () => setForm({ ...form, date: null, time: null, notes: '' }) },
     );
   };
 
-  const canSubmit = form.restaurantId && form.customerName && form.date && !create.isPending;
+  const canSubmit = form.restaurantId && form.customerName && form.date && form.time && !create.isPending;
+
+  const { data: availability, isLoading: availabilityLoading } = useReservationAvailability(
+    form.restaurantId,
+    form.date,
+  );
+  const fullSlots = (availability ?? [])
+    .filter((a) => a.full)
+    .flatMap((a) => {
+      const hour = String(a.hour).padStart(2, '0');
+      return [`${hour}:00`, `${hour}:30`];
+    });
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[380px_1fr]">
@@ -78,26 +94,32 @@ export function ReservationsPage() {
                 placeholder="Marie Dupont"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Date</label>
-                <Input
-                  type="date"
-                  required
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Date</label>
+              <div className="rounded-xl border border-brand/15 p-3">
+                <Calendar
                   value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Heure</label>
-                <Input
-                  type="time"
-                  required
-                  value={form.time}
-                  onChange={(e) => setForm({ ...form, time: e.target.value })}
+                  onChange={(date) => setForm({ ...form, date, time: null })}
                 />
               </div>
             </div>
+
+            {form.date && (
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Créneau</label>
+                {availabilityLoading ? (
+                  <Spinner label="Vérification des disponibilités…" />
+                ) : (
+                  <TimeSlotPicker
+                    groups={reservationSlotGroups(form.date)}
+                    value={form.time}
+                    onChange={(time) => setForm({ ...form, time })}
+                    fullSlots={fullSlots}
+                  />
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Couverts</label>
@@ -119,6 +141,16 @@ export function ReservationsPage() {
                 />
               </div>
             </div>
+            {form.date && form.time && (
+              <p className="rounded-xl bg-brand-pale px-3 py-2 text-sm font-semibold text-brand">
+                {new Date(`${form.date}T00:00:00`).toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })}{' '}
+                à {form.time}
+              </p>
+            )}
             {create.isError && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
                 {(create.error as Error).message}

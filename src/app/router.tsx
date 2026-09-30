@@ -5,6 +5,8 @@ import { AdminLayout } from '../layouts/AdminLayout';
 import { RequireRole } from '../components/RequireRole';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
+import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
+import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { RestaurantsPage } from '../pages/RestaurantsPage';
 import { RestaurantMenuPage } from '../pages/RestaurantMenuPage';
 import { CartPage } from '../pages/CartPage';
@@ -20,8 +22,17 @@ import { ReservationsPage } from '../pages/ReservationsPage';
 import { PortalReservationsPage } from '../pages/PortalReservationsPage';
 import { SuppliersPage } from '../pages/SuppliersPage';
 import { AdminFranchisesPage } from '../pages/AdminFranchisesPage';
+import { AdminPromotionsPage } from '../pages/AdminPromotionsPage';
 import { AdminSettingsPage } from '../pages/AdminSettingsPage';
 import { ComingSoonPage } from '../pages/ComingSoonPage';
+import { AboutPage } from '../pages/AboutPage';
+import { CareersPage } from '../pages/CareersPage';
+import { ContactPage } from '../pages/ContactPage';
+import { HelpCenterPage } from '../pages/HelpCenterPage';
+import { TermsPage } from '../pages/TermsPage';
+import { PrivacyPolicyPage } from '../pages/PrivacyPolicyPage';
+import { BecomeFranchiseePage } from '../pages/BecomeFranchiseePage';
+import { FranchiseLoginPage } from '../pages/FranchiseLoginPage';
 
 /** Route table. Guards live in RequireRole; pages stay presentational. */
 export function AppRouter() {
@@ -29,6 +40,7 @@ export function AppRouter() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
       {/* Storefront (public catalog, protected orders) */}
       <Route element={<StorefrontLayout />}>
@@ -67,6 +79,16 @@ export function AppRouter() {
             </RequireRole>
           }
         />
+
+        {/* Marketing / static content */}
+        <Route path="about" element={<AboutPage />} />
+        <Route path="careers" element={<CareersPage />} />
+        <Route path="contact" element={<ContactPage />} />
+        <Route path="help" element={<HelpCenterPage />} />
+        <Route path="terms" element={<TermsPage />} />
+        <Route path="privacy" element={<PrivacyPolicyPage />} />
+        <Route path="become-franchisee" element={<BecomeFranchiseePage />} />
+        <Route path="franchise-login" element={<FranchiseLoginPage />} />
       </Route>
 
       {/* Franchisee portal (manager only) */}
@@ -96,10 +118,10 @@ export function AppRouter() {
           </RequireRole>
         }
       >
-        <Route index element={<ComingSoonPage title="Tableau de bord" subtitle="Vue globale du réseau de franchises" />} />
+        <Route index element={<AdminDashboardPage />} />
         <Route path="stock" element={<ComingSoonPage title="Gestion des stocks" subtitle="Vue consolidée des stocks du réseau" />} />
         <Route path="menu" element={<CatalogManagementPage />} />
-        <Route path="promotions" element={<ComingSoonPage title="Promotions" subtitle="Campagnes promotionnelles du réseau" />} />
+        <Route path="promotions" element={<AdminPromotionsPage />} />
         <Route path="personnel" element={<ComingSoonPage title="Personnel" subtitle="Effectifs du réseau" />} />
         <Route path="franchises" element={<AdminFranchisesPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />

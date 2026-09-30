@@ -11,6 +11,15 @@ export function useRestaurantMenu(restaurantId: string | undefined) {
   });
 }
 
+/** Public: resolves a set of dish ids (e.g. a customer's favorited dishes). */
+export function useMenuItemsByIds(ids: string[]) {
+  return useQuery({
+    queryKey: ['menu', 'by-ids', ids],
+    queryFn: () => menuApi.byIds(ids),
+    enabled: ids.length > 0,
+  });
+}
+
 /** Franchisee: own restaurant's dishes · Admin: the global catalog. */
 export function useMyMenu() {
   return useQuery({ queryKey: ['menu', 'mine'], queryFn: menuApi.listMine });
