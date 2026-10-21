@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { categoryApi, menuApi, menuPlanApi } from '../api/menuApi';
-import type { MenuItemForm, MenuPlanForm } from '../types/menu.types';
+import { categoryApi, menuApi, menuPlanApi, recipeApi } from '../api/menuApi';
+import type { MenuItemForm, MenuPlanForm, RecipeLine } from '../types/menu.types';
 
 /** Customer: a restaurant's public menu (dishes). */
 export function useRestaurantMenu(restaurantId: string | undefined) {
@@ -121,5 +121,22 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: (id: string) => categoryApi.remove(id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
+/** Manager: the stock recipe of a dish (only fetched once an id is given). */
+export function useRecipe(itemId: string | undefined) {
+  return useQuery({
+    queryKey: ['recipe', itemId],
+    queryFn: () => recipeApi.get(itemId!),
+    enabled: !!itemId,
+  });
+}
+
+export function useSaveRecipe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, lines }: { itemId: string; lines: RecipeLine[] }) => recipeApi.save(itemId, lines),
+    onSuccess: (_data, { itemId }) => void qc.invalidateQueries({ queryKey: ['recipe', itemId] }),
   });
 }
