@@ -6,6 +6,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
 import { Modal } from '../components/Modal';
 import { RecipeEditor, validateRecipe } from '../components/RecipeEditor';
+import type { StockStatus } from '../components/RecipeEditor';
 import { Spinner } from '../components/Spinner';
 import {
   useCategories,
@@ -113,7 +114,7 @@ function useDishPool(isAdmin: boolean) {
 
 function DishesTab({ isAdmin }: { isAdmin: boolean }) {
   const { data: items, isLoading } = useMyMenu();
-  const { data: stocks } = useStocks();
+  const { data: stocks, isLoading: stocksLoading, isError: stocksError } = useStocks();
   const { data: categories } = useCategories();
   const [editing, setEditing] = useState<MenuItem | null>(null);
   const [recipeFor, setRecipeFor] = useState<MenuItem | null>(null);
@@ -132,6 +133,7 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
   if (isLoading) return <Spinner label="Chargement du menu…" />;
 
   const stockItems = stocks ?? [];
+  const stockStatus: StockStatus = stocksLoading ? 'loading' : stocksError ? 'error' : 'ready';
   const stockNames = stockItems.map((s) => s.name);
   const categoryNames = (categories ?? []).map((c) => c.name);
 
@@ -174,6 +176,7 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
             initial={EMPTY_DISH_FORM}
             stockNames={stockNames}
             stockItems={stockItems}
+            stockStatus={stockStatus}
             isAdmin={isAdmin}
             categories={categoryNames}
             submitLabel="Créer l'article"
@@ -199,6 +202,7 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
             }}
             stockNames={stockNames}
             stockItems={stockItems}
+            stockStatus={stockStatus}
             isAdmin={isAdmin}
             categories={categoryNames}
             submitLabel="Enregistrer"
@@ -209,7 +213,7 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
       )}
 
       {recipeFor && (
-        <RecipeModal item={recipeFor} stockItems={stockItems} onClose={() => setRecipeFor(null)} />
+        <RecipeModal item={recipeFor} stockItems={stockItems} stockStatus={stockStatus} onClose={() => setRecipeFor(null)} />
       )}
 
       {!items || items.length === 0 ? (
@@ -339,10 +343,12 @@ function DishCard({
 function RecipeModal({
   item,
   stockItems,
+  stockStatus,
   onClose,
 }: {
   item: MenuItem;
   stockItems: StockItem[];
+  stockStatus: StockStatus;
   onClose: () => void;
 }) {
   const { data, isLoading, error: loadError } = useRecipe(item.id);
@@ -371,7 +377,7 @@ function RecipeModal({
             Impossible de charger la recette : {(loadError as Error).message}
           </p>
         ) : (
-          <RecipeEditor value={lines} onChange={setEdited} stockItems={stockItems} />
+          <RecipeEditor value={lines} onChange={setEdited} stockItems={stockItems} stockStatus={stockStatus} />
         )}
         {(validationError || save.error) && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -396,6 +402,7 @@ function DishFormFields({
   initial,
   stockNames,
   stockItems,
+  stockStatus,
   isAdmin,
   categories,
   submitLabel,
@@ -406,6 +413,7 @@ function DishFormFields({
   initial: MenuItemForm;
   stockNames: string[];
   stockItems: StockItem[];
+  stockStatus: StockStatus;
   isAdmin: boolean;
   categories: string[];
   submitLabel: string;
@@ -568,7 +576,12 @@ function DishFormFields({
               Impossible de charger la recette : {(recipeLoadError as Error).message}
             </p>
           ) : (
-            <RecipeEditor value={recipe} onChange={setEditedRecipe} stockItems={stockItems} />
+            <RecipeEditor
+              value={recipe}
+              onChange={setEditedRecipe}
+              stockItems={stockItems}
+              stockStatus={stockStatus}
+            />
           )}
         </div>
       )}

@@ -9,6 +9,8 @@ import { MAX_RECIPE_LINES, parseQuantity } from './recipeLines';
 const SELECT_CLASS =
   'w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand';
 
+export type StockStatus = 'loading' | 'error' | 'ready';
+
 /**
  * Pure UI editor for a dish recipe: one row per ingredient (stock article +
  * quantity in the article's unit). An unchosen row has an empty stockItemId
@@ -19,15 +21,18 @@ export function RecipeEditor({
   value,
   onChange,
   stockItems,
+  stockStatus = 'ready',
 }: {
   value: RecipeLine[];
   onChange: (lines: RecipeLine[]) => void;
   stockItems: StockItem[];
+  /** State of the stock list query; saved lines display whatever it is. */
+  stockStatus?: StockStatus;
 }) {
   // Raw text being typed, by row index; absent = show the numeric value.
   const [drafts, setDrafts] = useState<Record<number, string>>({});
 
-  if (stockItems.length === 0 && value.length === 0) {
+  if (stockStatus === 'ready' && stockItems.length === 0 && value.length === 0) {
     return (
       <p className="rounded-xl bg-brand-pale px-4 py-3 text-sm text-brand">
         Votre restaurant n'a encore aucun article en stock. Créez-les d'abord dans la page <strong>Stock</strong> pour
@@ -56,11 +61,16 @@ export function RecipeEditor({
 
   const chosen = new Set(value.map((l) => l.stockItemId));
   const canAdd =
+    stockStatus === 'ready' &&
     value.length < MAX_RECIPE_LINES &&
     value.every((l) => l.stockItemId) && stockItems.some((s) => !chosen.has(s.id));
 
   return (
     <div className="space-y-2">
+      {stockStatus === 'loading' && <p className="text-sm text-neutral-400">Chargement du stock…</p>}
+      {stockStatus === 'error' && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">Impossible de charger votre stock.</p>
+      )}
       {value.length === 0 && (
         <p className="text-sm text-neutral-400">
           Aucun ingrédient suivi : ce plat ne décrémente pas le stock. Ajoutez des ingrédients pour le suivre.
