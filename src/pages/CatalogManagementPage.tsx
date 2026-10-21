@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState } from 'react';
-import { Eye, EyeOff, ImagePlus, Lock, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { Eye, EyeOff, ChefHat, ImagePlus, Lock, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
 import { Modal } from '../components/Modal';
+import { RecipeEditor, validateRecipe } from '../components/RecipeEditor';
+import type { StockStatus } from '../components/RecipeEditor';
 import { Spinner } from '../components/Spinner';
 import {
   useCategories,
@@ -14,14 +16,23 @@ import {
   useDeleteMenuPlan,
   useMyMenu,
   useMyMenuPlans,
+  useRecipe,
   useRestaurantMenu,
+  useSaveRecipe,
   useToggleMenuItem,
   useToggleMenuPlan,
   useUpdateMenuItem,
   useUpdateMenuPlan,
 } from '../features/catalog/hooks/useMenu';
-import type { MenuItem, MenuItemForm, MenuPlan, MenuPlanForm } from '../features/catalog/types/menu.types';
+import type {
+  MenuItem,
+  MenuItemForm,
+  MenuPlan,
+  MenuPlanForm,
+  RecipeLine,
+} from '../features/catalog/types/menu.types';
 import { useStocks } from '../features/stock/hooks/useStock';
+import type { StockItem } from '../features/stock/types/stock.types';
 import { useAuthStore } from '../store/authStore';
 import { formatPrice } from '../utils/format';
 import { dishPhoto } from '../utils/images';
@@ -103,9 +114,10 @@ function useDishPool(isAdmin: boolean) {
 
 function DishesTab({ isAdmin }: { isAdmin: boolean }) {
   const { data: items, isLoading } = useMyMenu();
-  const { data: stocks } = useStocks();
+  const { data: stocks, isLoading: stocksLoading, isError: stocksError } = useStocks();
   const { data: categories } = useCategories();
   const [editing, setEditing] = useState<MenuItem | null>(null);
+  const [recipeFor, setRecipeFor] = useState<MenuItem | null>(null);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState(ALL);
@@ -120,7 +132,9 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
 
   if (isLoading) return <Spinner label="Chargement du menu…" />;
 
-  const stockNames = (stocks ?? []).map((s) => s.name);
+  const stockItems = stocks ?? [];
+  const stockStatus: StockStatus = stocksLoading ? 'loading' : stocksError ? 'error' : 'ready';
+  const stockNames = stockItems.map((s) => s.name);
   const categoryNames = (categories ?? []).map((c) => c.name);
 
   return (
@@ -161,6 +175,9 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
           <DishFormFields
             initial={EMPTY_DISH_FORM}
             stockNames={stockNames}
+            stockItems={stockItems}
+            stockStatus={stockStatus}
+            isAdmin={isAdmin}
             categories={categoryNames}
             submitLabel="Créer l'article"
             onCancel={() => setCreating(false)}
@@ -184,12 +201,19 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
               image_data_url: editing.imageUrl,
             }}
             stockNames={stockNames}
+            stockItems={stockItems}
+            stockStatus={stockStatus}
+            isAdmin={isAdmin}
             categories={categoryNames}
             submitLabel="Enregistrer"
             onCancel={() => setEditing(null)}
             onDone={() => setEditing(null)}
           />
         </Modal>
+      )}
+
+      {recipeFor && (
+        <RecipeModal item={recipeFor} stockItems={stockItems} stockStatus={stockStatus} onClose={() => setRecipeFor(null)} />
       )}
 
       {!items || items.length === 0 ? (
@@ -203,7 +227,13 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((item) => (
-            <DishCard key={item.id} item={item} isAdmin={isAdmin} onEdit={() => setEditing(item)} />
+            <DishCard
+              key={item.id}
+              item={item}
+              isAdmin={isAdmin}
+              onEdit={() => setEditing(item)}
+              onRecipe={() => setRecipeFor(item)}
+            />
           ))}
         </div>
       )}
@@ -222,7 +252,17 @@ const EMPTY_DISH_FORM: MenuItemForm = {
   image_data_url: '',
 };
 
-function DishCard({ item, isAdmin, onEdit }: { item: MenuItem; isAdmin: boolean; onEdit: () => void }) {
+function DishCard({
+  item,
+  isAdmin,
+  onEdit,
+  onRecipe,
+}: {
+  item: MenuItem;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onRecipe: () => void;
+}) {
   const remove = useDeleteMenuItem();
   const toggle = useToggleMenuItem();
   // A franchisee may only hide/show a network default — never edit or delete it.
@@ -266,6 +306,11 @@ function DishCard({ item, isAdmin, onEdit }: { item: MenuItem; isAdmin: boolean;
               <Pencil size={15} /> Modifier
             </Button>
           )}
+          {!canEdit && !isAdmin && (
+            <Button variant="ghost" onClick={onRecipe} className="flex-1 py-2 text-sm">
+              <ChefHat size={15} /> Recette
+            </Button>
+          )}
           <button
             onClick={() => toggle.mutate(item.id)}
             disabled={toggle.isPending}
@@ -294,10 +339,71 @@ function DishCard({ item, isAdmin, onEdit }: { item: MenuItem; isAdmin: boolean;
   );
 }
 
+/** Franchisee-only: edit the stock recipe of a global (head-office) dish. */
+function RecipeModal({
+  item,
+  stockItems,
+  stockStatus,
+  onClose,
+}: {
+  item: MenuItem;
+  stockItems: StockItem[];
+  stockStatus: StockStatus;
+  onClose: () => void;
+}) {
+  const { data, isLoading, error: loadError } = useRecipe(item.id);
+  const save = useSaveRecipe();
+  const [edited, setEdited] = useState<RecipeLine[] | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const lines = edited ?? data ?? [];
+
+  const submit = () => {
+    const message = validateRecipe(lines);
+    setValidationError(message);
+    if (message) return;
+    save.mutate({ itemId: item.id, lines }, { onSuccess: onClose });
+  };
+
+  return (
+    <Modal title={`Recette · ${item.name}`} onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-sm text-neutral-500">
+          Ingrédients de votre stock consommés à chaque plat commandé. Cette recette ne concerne que votre restaurant.
+        </p>
+        {isLoading ? (
+          <Spinner label="Chargement de la recette…" />
+        ) : loadError ? (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+            Impossible de charger la recette : {(loadError as Error).message}
+          </p>
+        ) : (
+          <RecipeEditor value={lines} onChange={setEdited} stockItems={stockItems} stockStatus={stockStatus} />
+        )}
+        {(validationError || save.error) && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+            {validationError ?? (save.error as Error).message}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <Button type="button" onClick={submit} disabled={save.isPending || isLoading || !!loadError}>
+            {save.isPending ? 'Enregistrement…' : 'Enregistrer la recette'}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function DishFormFields({
   itemId,
   initial,
   stockNames,
+  stockItems,
+  stockStatus,
+  isAdmin,
   categories,
   submitLabel,
   onCancel,
@@ -306,6 +412,9 @@ function DishFormFields({
   itemId?: string;
   initial: MenuItemForm;
   stockNames: string[];
+  stockItems: StockItem[];
+  stockStatus: StockStatus;
+  isAdmin: boolean;
   categories: string[];
   submitLabel: string;
   onCancel: () => void;
@@ -318,11 +427,33 @@ function DishFormFields({
     category: initial.category || categories[0] || '',
     priceEuros: (initial.price_cents / 100).toString(),
   });
-  const pending = create.isPending || update.isPending;
+  // Recipe (managers only): `edited` stays null until the user touches it, so
+  // an untouched recipe is never re-saved (nor wiped if it failed to load).
+  const { data: savedRecipe, isLoading: recipeLoading, error: recipeLoadError } = useRecipe(
+    isAdmin ? undefined : itemId,
+  );
+  const saveRecipe = useSaveRecipe();
+  const [editedRecipe, setEditedRecipe] = useState<RecipeLine[] | null>(null);
+  const [recipeError, setRecipeError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  // Id of a dish created by a previous attempt whose recipe save failed: retrying
+  // must update it, not create a duplicate.
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const recipe = editedRecipe ?? savedRecipe ?? [];
+  const pending = saving || create.isPending || update.isPending || saveRecipe.isPending;
   const error = (create.error ?? update.error) as Error | null;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRecipeError(null);
+    const recipeDirty = !isAdmin && (editedRecipe !== null || (!itemId && recipe.length > 0));
+    if (recipeDirty) {
+      const message = validateRecipe(recipe);
+      if (message) {
+        setRecipeError(message);
+        return;
+      }
+    }
     const payload: MenuItemForm = {
       name: form.name,
       description: form.description,
@@ -333,9 +464,34 @@ function DishFormFields({
       ingredients: form.ingredients,
       image_data_url: form.image_data_url,
     };
-    const onSuccess = () => onDone();
-    if (itemId) update.mutate({ id: itemId, form: payload }, { onSuccess });
-    else create.mutate(payload, { onSuccess });
+    setSaving(true);
+    let id = itemId ?? createdId;
+    try {
+      if (id) {
+        await update.mutateAsync({ id, form: payload });
+      } else {
+        id = (await create.mutateAsync(payload)).id;
+        setCreatedId(id);
+      }
+    } catch {
+      // The mutation error is displayed through `error`.
+      setSaving(false);
+      return;
+    }
+    if (recipeDirty) {
+      try {
+        await saveRecipe.mutateAsync({ itemId: id, lines: recipe });
+      } catch (err) {
+        setRecipeError(
+          `Le plat a bien été enregistré, mais la recette n'a pas pu l'être : ${(err as Error).message}. ` +
+            'Corrigez-la puis cliquez de nouveau sur Enregistrer.',
+        );
+        setSaving(false);
+        return;
+      }
+    }
+    setSaving(false);
+    onDone();
   };
 
   return (
@@ -405,11 +561,38 @@ function DishFormFields({
         Visible (non masqué)
       </label>
 
-      {error && (
-        <p className="sm:col-span-12 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error.message}</p>
+      {!isAdmin && (
+        <div className="sm:col-span-12">
+          <label className="mb-1.5 block text-sm font-semibold text-neutral-700">
+            Recette (stock){' '}
+            <span className="font-normal text-neutral-400">
+              — ingrédients décrémentés du stock à chaque commande
+            </span>
+          </label>
+          {recipeLoading ? (
+            <Spinner label="Chargement de la recette…" />
+          ) : recipeLoadError ? (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              Impossible de charger la recette : {(recipeLoadError as Error).message}
+            </p>
+          ) : (
+            <RecipeEditor
+              value={recipe}
+              onChange={setEditedRecipe}
+              stockItems={stockItems}
+              stockStatus={stockStatus}
+            />
+          )}
+        </div>
+      )}
+
+      {(error || recipeError) && (
+        <p className="sm:col-span-12 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          {recipeError ?? error?.message}
+        </p>
       )}
       <div className="flex gap-2 sm:col-span-12">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || recipeLoading}>
           {pending ? 'Enregistrement…' : submitLabel}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>

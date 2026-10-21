@@ -18,6 +18,8 @@ export interface StockMovement {
   reason: string;
   createdAt: string;
   createdBy: string;
+  /** Quantity an order consumption could not take (insufficient stock); 0 otherwise. */
+  shortfall?: number;
 }
 
 export type ReplenishmentStatus = 'PENDING' | 'APPROVED' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';

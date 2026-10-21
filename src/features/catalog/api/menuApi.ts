@@ -7,6 +7,9 @@ import type {
   MenuPlan,
   MenuPlanDto,
   MenuPlanForm,
+  RecipeDto,
+  RecipeLine,
+  RecipeLineDto,
 } from '../types/menu.types';
 
 function toMenuItem(d: MenuItemDto): MenuItem {
@@ -24,6 +27,24 @@ function toMenuItem(d: MenuItemDto): MenuItem {
     isGlobal: d.is_global,
     hiddenForViewer: d.hidden_for_viewer,
     imageUrl: d.image_data_url ?? '',
+  };
+}
+
+function toRecipeLine(d: RecipeLineDto): RecipeLine {
+  return {
+    stockItemId: d.stock_item_id,
+    stockItemName: d.stock_item_name,
+    unit: d.unit,
+    quantity: d.quantity,
+  };
+}
+
+function toRecipeLineDto(l: RecipeLine): RecipeLineDto {
+  return {
+    stock_item_id: l.stockItemId,
+    stock_item_name: l.stockItemName,
+    unit: l.unit,
+    quantity: l.quantity,
   };
 }
 
@@ -113,4 +134,21 @@ export const categoryApi = {
     http<Category>('/api/menu-categories', { method: 'POST', body: JSON.stringify({ name }) }),
 
   remove: (id: string): Promise<void> => http(`/api/menu-categories/${id}`, { method: 'DELETE' }),
+};
+
+/** Manager-only: the stock recipe of a dish for the caller's restaurant
+ *  (works for the restaurant's own dishes and for global ones). */
+export const recipeApi = {
+  get: async (itemId: string): Promise<RecipeLine[]> => {
+    const dto = await http<RecipeDto>(`/api/menu/${itemId}/recipe`);
+    return (dto.lines ?? []).map(toRecipeLine);
+  },
+
+  /** Replaces the whole recipe; an empty list deletes it. */
+  save: async (itemId: string, lines: RecipeLine[]): Promise<void> => {
+    await http<RecipeDto>(`/api/menu/${itemId}/recipe`, {
+      method: 'PUT',
+      body: JSON.stringify({ lines: lines.map(toRecipeLineDto) }),
+    });
+  },
 };

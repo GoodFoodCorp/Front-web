@@ -90,3 +90,25 @@ export interface Category {
   id: string;
   name: string;
 }
+
+/** One ingredient of a dish recipe, linked to a stock article of the restaurant. */
+export interface RecipeLine {
+  stockItemId: string;
+  stockItemName: string;
+  unit: string;
+  quantity: number;
+}
+
+/** Raw shape of a recipe line in menu-service (snake_case). */
+export interface RecipeLineDto {
+  stock_item_id: string;
+  stock_item_name: string;
+  unit: string;
+  quantity: number;
+}
+
+/** Raw shape of GET/PUT /api/menu/{id}/recipe. */
+export interface RecipeDto {
+  menu_item_id: string;
+  lines: RecipeLineDto[] | null;
+}
