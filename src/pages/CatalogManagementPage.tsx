@@ -8,6 +8,7 @@ import { Modal } from '../components/Modal';
 import { RecipeEditor, validateRecipe } from '../components/RecipeEditor';
 import type { StockStatus } from '../components/RecipeEditor';
 import { Spinner } from '../components/Spinner';
+import { Switch } from '../components/Switch';
 import {
   useCategories,
   useCreateMenuItem,
@@ -461,7 +462,9 @@ function DishFormFields({
       category: form.category,
       emoji: form.emoji || '🍽️',
       available: form.available,
-      ingredients: form.ingredients,
+      // Franchisees: the customer-facing list is derived from the recipe.
+      ingredients:
+        !isAdmin && editedRecipe !== null ? editedRecipe.map((l) => l.stockItemName) : form.ingredients,
       image_data_url: form.image_data_url,
     };
     setSaving(true);
@@ -495,80 +498,69 @@ function DishFormFields({
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-12">
-      <div className="sm:col-span-12">
+    <form onSubmit={submit} className="space-y-6">
+      <FormSection title="Présentation">
         <ImageField
           value={form.image_data_url}
           onChange={(image_data_url) => setForm({ ...form, image_data_url })}
         />
-      </div>
-      <Input
-        className="sm:col-span-4"
-        placeholder="Nom du plat"
-        required
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-      />
-      <Input
-        className="sm:col-span-2"
-        placeholder="Emoji"
-        value={form.emoji}
-        onChange={(e) => setForm({ ...form, emoji: e.target.value })}
-      />
-      <select
-        className="sm:col-span-3 rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
-        value={form.category}
-        onChange={(e) => setForm({ ...form, category: e.target.value })}
-      >
-        {categories.map((c) => (
-          <option key={c}>{c}</option>
-        ))}
-      </select>
-      <Input
-        className="sm:col-span-3"
-        type="number"
-        step="0.01"
-        min="0"
-        placeholder="Prix (€)"
-        required
-        value={form.priceEuros}
-        onChange={(e) => setForm({ ...form, priceEuros: e.target.value })}
-      />
-      <Input
-        className="sm:col-span-12"
-        placeholder="Description"
-        value={form.description}
-        onChange={(e) => setForm({ ...form, description: e.target.value })}
-      />
+        <div className="grid gap-3 sm:grid-cols-12">
+          <Field label="Nom du plat" className="sm:col-span-8">
+            <Input
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </Field>
+          <Field label="Emoji" className="sm:col-span-4">
+            <Input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} />
+          </Field>
+          <Field label="Catégorie" className="sm:col-span-7">
+            <select
+              className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            >
+              {categories.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Prix (€)" className="sm:col-span-5">
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              value={form.priceEuros}
+              onChange={(e) => setForm({ ...form, priceEuros: e.target.value })}
+            />
+          </Field>
+          <Field label="Description" className="sm:col-span-12">
+            <Input
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </Field>
+        </div>
+      </FormSection>
 
-      <div className="sm:col-span-9">
-        <label className="mb-1.5 block text-sm font-semibold text-neutral-700">
-          Ingrédients {stockNames.length > 0 && <span className="font-normal text-neutral-400">(depuis votre stock)</span>}
-        </label>
-        <TagInput
-          value={form.ingredients}
-          onChange={(ingredients) => setForm({ ...form, ingredients })}
-          suggestions={stockNames}
-        />
-      </div>
-
-      <label className="flex items-center gap-2 self-end pb-2.5 text-sm font-semibold text-neutral-600 sm:col-span-3">
-        <input
-          type="checkbox"
-          checked={form.available}
-          onChange={(e) => setForm({ ...form, available: e.target.checked })}
-        />
-        Visible (non masqué)
-      </label>
-
-      {!isAdmin && (
-        <div className="sm:col-span-12">
-          <label className="mb-1.5 block text-sm font-semibold text-neutral-700">
-            Recette (stock){' '}
-            <span className="font-normal text-neutral-400">
-              — ingrédients décrémentés du stock à chaque commande
-            </span>
-          </label>
+      {isAdmin ? (
+        <FormSection
+          title="Ingrédients"
+          hint="Affichés aux clients sur la carte du plat. Chaque franchisé définit ensuite les quantités décomptées de son propre stock."
+        >
+          <TagInput
+            value={form.ingredients}
+            onChange={(ingredients) => setForm({ ...form, ingredients })}
+            suggestions={stockNames}
+          />
+        </FormSection>
+      ) : (
+        <FormSection
+          title="Ingrédients"
+          hint="Choisissez les articles de votre stock et la quantité utilisée pour un plat. Elle est décomptée du stock à chaque commande, et la liste est affichée aux clients."
+        >
           {recipeLoading ? (
             <Spinner label="Chargement de la recette…" />
           ) : recipeLoadError ? (
@@ -576,22 +568,39 @@ function DishFormFields({
               Impossible de charger la recette : {(recipeLoadError as Error).message}
             </p>
           ) : (
-            <RecipeEditor
-              value={recipe}
-              onChange={setEditedRecipe}
-              stockItems={stockItems}
-              stockStatus={stockStatus}
-            />
+            <>
+              {editedRecipe === null && recipe.length === 0 && form.ingredients.length > 0 && (
+                <p className="rounded-xl bg-brand-pale px-4 py-3 text-sm text-brand">
+                  Affiché aux clients pour l'instant : {form.ingredients.join(', ')}. Cette liste sera remplacée dès
+                  que vous ajouterez des ingrédients ci-dessous.
+                </p>
+              )}
+              <RecipeEditor
+                value={recipe}
+                onChange={setEditedRecipe}
+                stockItems={stockItems}
+                stockStatus={stockStatus}
+              />
+            </>
           )}
-        </div>
+        </FormSection>
       )}
 
+      <FormSection title="Visibilité">
+        <label className="flex items-center gap-3 text-sm font-semibold text-neutral-700">
+          <Switch
+            checked={form.available}
+            onChange={(available) => setForm({ ...form, available })}
+            label="Visible pour mes clients"
+          />
+          {form.available ? 'Visible pour mes clients' : 'Masqué pour mes clients'}
+        </label>
+      </FormSection>
+
       {(error || recipeError) && (
-        <p className="sm:col-span-12 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-          {recipeError ?? error?.message}
-        </p>
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{recipeError ?? error?.message}</p>
       )}
-      <div className="flex gap-2 sm:col-span-12">
+      <div className="sticky bottom-0 -mx-5 -mb-5 flex gap-2 rounded-b-2xl border-t border-brand/10 bg-white px-5 py-4">
         <Button type="submit" disabled={pending || recipeLoading}>
           {pending ? 'Enregistrement…' : submitLabel}
         </Button>
@@ -600,6 +609,28 @@ function DishFormFields({
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Titled block of the dish form. */
+function FormSection({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <div>
+        <h3 className="text-sm font-bold uppercase tracking-wide text-brand">{title}</h3>
+        {hint && <p className="mt-0.5 text-sm text-neutral-500">{hint}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Field({ label, className = '', children }: { label: string; className?: string; children: React.ReactNode }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-1.5 block text-sm font-semibold text-neutral-700">{label}</span>
+      {children}
+    </label>
   );
 }
 

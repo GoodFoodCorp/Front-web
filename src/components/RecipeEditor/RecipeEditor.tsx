@@ -80,10 +80,10 @@ export function RecipeEditor({
         const known = stockItems.some((s) => s.id === line.stockItemId);
         const draft = drafts[index] ?? (line.quantity > 0 ? String(line.quantity) : '');
         return (
-          <div key={index} className="flex items-center gap-2">
+          <div key={index} className="grid grid-cols-[minmax(0,1fr)_6rem_3rem_2.5rem] items-center gap-2">
             <select
               aria-label={`Article du stock, ingrédient ${index + 1}`}
-              className={`${SELECT_CLASS} min-w-0 flex-1`}
+              className={SELECT_CLASS}
               value={line.stockItemId}
               onChange={(e) => pick(index, e.target.value)}
             >
@@ -102,7 +102,6 @@ export function RecipeEditor({
             </select>
             <Input
               aria-label={`Quantité, ingrédient ${index + 1}`}
-              className="w-28 shrink-0"
               type="text"
               inputMode="decimal"
               placeholder="Quantité"
@@ -110,12 +109,12 @@ export function RecipeEditor({
               value={draft}
               onChange={(e) => type(index, e.target.value)}
             />
-            <span className="w-12 shrink-0 text-sm text-neutral-500">{line.unit}</span>
+            <span className="truncate text-sm text-neutral-500">{line.unit}</span>
             <button
               type="button"
               onClick={() => remove(index)}
               aria-label={`Retirer ${line.stockItemName || `l'ingrédient ${index + 1}`}`}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-red-200 text-red-500 transition hover:bg-red-50"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-red-200 text-red-500 transition hover:bg-red-50"
             >
               <Trash2 size={16} />
             </button>
