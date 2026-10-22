@@ -171,8 +171,13 @@ function CreateStockForm({ onDone }: { onDone: () => void }) {
   const create = useCreateStock();
   const [form, setForm] = useState({ name: '', unit: 'kg', quantityOnHand: '', thresholdMin: '', thresholdMax: '' });
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const invalid = validateStockForm(form);
+    setFormError(invalid);
+    if (invalid) return;
     create.mutate(
       {
         name: form.name,
@@ -198,9 +203,9 @@ function CreateStockForm({ onDone }: { onDone: () => void }) {
       <Input type="number" placeholder="Qté" required value={form.quantityOnHand} onChange={(e) => setForm({ ...form, quantityOnHand: e.target.value })} />
       <Input type="number" placeholder="Seuil min" required value={form.thresholdMin} onChange={(e) => setForm({ ...form, thresholdMin: e.target.value })} />
       <Input type="number" placeholder="Seuil max" required value={form.thresholdMax} onChange={(e) => setForm({ ...form, thresholdMax: e.target.value })} />
-      {create.isError && (
+      {(formError || create.isError) && (
         <p className="sm:col-span-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-          {(create.error as Error).message}
+          {formError ?? stockErrorMessage(create.error as Error)}
         </p>
       )}
       <div className="flex gap-2 sm:col-span-6">
@@ -213,6 +218,32 @@ function CreateStockForm({ onDone }: { onDone: () => void }) {
       </div>
     </form>
   );
+}
+
+/** French message for a stock form that cannot be saved, or null when it is fine. */
+function validateStockForm(form: { name: string; unit: string; quantityOnHand: string; thresholdMin: string; thresholdMax: string }): string | null {
+  const min = Number(form.thresholdMin);
+  const max = Number(form.thresholdMax);
+  if (Number(form.quantityOnHand) < 0 || min < 0 || max < 0) return 'Les quantités et les seuils ne peuvent pas être négatifs.';
+  if (max <= min) {
+    return `Le seuil max (${form.thresholdMax}) doit être supérieur au seuil min « Recommande à » (${form.thresholdMin}).`;
+  }
+  return null;
+}
+
+/** The stock API answers in English: translate the messages a manager can hit. */
+function stockErrorMessage(error: Error): string {
+  const m = error.message;
+  if (m.includes('ThresholdMax must be greater')) return 'Le seuil max doit être supérieur au seuil min « Recommande à ».';
+  if (m.includes('already exists')) return 'Un article portant ce nom existe déjà dans votre stock.';
+  if (m.includes('only its thresholds can be changed'))
+    return 'Cet article est utilisé (recette, mouvement, réapprovisionnement ou commande) : seuls ses seuils sont modifiables.';
+  if (m.includes('cannot be deleted'))
+    return 'Cet article est utilisé (recette, mouvement, réapprovisionnement ou commande) : il ne peut pas être supprimé.';
+  if (m.includes('menu-service unreachable'))
+    return "Impossible de vérifier l'utilisation de l'article pour le moment. Réessayez dans un instant.";
+  if (m.includes('cannot be negative')) return 'Les quantités et les seuils ne peuvent pas être négatifs.';
+  return m;
 }
 
 /** Why an article is locked, in French, for the manager. */
@@ -242,10 +273,15 @@ function EditStockForm({ item, onClose }: { item: StockItem; onClose: () => void
 
   const locked = usage?.isLocked ?? true; // fail closed until we know
   const reasons = usage ? lockReasons(usage) : [];
-  const error = (update.error ?? remove.error) as Error | null;
+  const [formError, setFormError] = useState<string | null>(null);
+  const apiError = (update.error ?? remove.error) as Error | null;
+  const error = formError ?? (apiError ? stockErrorMessage(apiError) : null);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const invalid = validateStockForm(form);
+    setFormError(invalid);
+    if (invalid) return;
     update.mutate(
       {
         id: item.id,
@@ -311,7 +347,7 @@ function EditStockForm({ item, onClose }: { item: StockItem; onClose: () => void
           </label>
         </div>
       </div>
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error.message}</p>}
+      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" className="px-4 py-2" disabled={update.isPending || isLoading}>
           {update.isPending ? 'Enregistrement…' : 'Enregistrer'}
