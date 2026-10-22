@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { stockApi } from '../api/stockApi';
-import type { CreateStockPayload, MovementPayload } from '../types/stock.types';
+import type { CreateStockPayload, MovementPayload, UpdateStockPayload } from '../types/stock.types';
 
 export function useStocks() {
   return useQuery({ queryKey: ['stocks'], queryFn: stockApi.list });
@@ -18,6 +18,29 @@ export function useCreateStock() {
   });
 }
 
+export function useStockUsage(id: string, enabled: boolean) {
+  return useQuery({ queryKey: ['stock-usage', id], queryFn: () => stockApi.usage(id), enabled, staleTime: 0 });
+}
+
+export function useUpdateStock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateStockPayload }) => stockApi.update(id, payload),
+    onSuccess: (_item, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      void queryClient.invalidateQueries({ queryKey: ['stock-usage', id] });
+    },
+  });
+}
+
+export function useDeleteStock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => stockApi.remove(id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['stocks'] }),
+  });
+}
+
 /** A movement can auto-generate a replenishment, so both lists are refreshed. */
 export function useRegisterMovement() {
   const queryClient = useQueryClient();
@@ -26,6 +49,7 @@ export function useRegisterMovement() {
       stockApi.registerMovement(id, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      void queryClient.invalidateQueries({ queryKey: ['stock-usage'] });
       void queryClient.invalidateQueries({ queryKey: ['replenishments'] });
     },
   });

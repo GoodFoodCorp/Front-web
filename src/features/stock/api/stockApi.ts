@@ -6,6 +6,8 @@ import type {
   ReplenishmentRequest,
   StockItem,
   StockMovement,
+  StockUsage,
+  UpdateStockPayload,
 } from '../types/stock.types';
 
 interface StockDetail {
@@ -20,6 +22,13 @@ export const stockApi = {
 
   create: (payload: CreateStockPayload) =>
     http<StockItem>('/api/stocks', { method: 'POST', body: JSON.stringify(payload) }),
+
+  update: (id: string, payload: UpdateStockPayload) =>
+    http<StockItem>(`/api/stocks/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+
+  remove: (id: string) => http<void>(`/api/stocks/${id}`, { method: 'DELETE' }),
+
+  usage: (id: string) => http<StockUsage>(`/api/stocks/${id}/usage`),
 
   registerMovement: (id: string, payload: MovementPayload) =>
     http<MovementResult>(`/api/stocks/${id}/movements`, {

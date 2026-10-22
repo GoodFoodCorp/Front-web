@@ -1,13 +1,21 @@
 import { useState } from 'react';
-import { AlertTriangle, Check, Plus } from 'lucide-react';
+import { AlertTriangle, Check, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
 import { LocationBadge } from '../components/LocationBadge';
 import { Spinner } from '../components/Spinner';
-import { useCreateReplenishment, useCreateStock, useRegisterMovement, useStocks } from '../features/stock/hooks/useStock';
-import type { StockItem } from '../features/stock/types/stock.types';
+import {
+  useCreateReplenishment,
+  useCreateStock,
+  useDeleteStock,
+  useRegisterMovement,
+  useStockUsage,
+  useStocks,
+  useUpdateStock,
+} from '../features/stock/hooks/useStock';
+import type { StockItem, StockUsage } from '../features/stock/types/stock.types';
 
 export function StockPage() {
   const { data: stocks, isLoading } = useStocks();
@@ -133,7 +141,7 @@ function StockRow({ item }: { item: StockItem }) {
       </tr>
       {editing && (
         <tr className="bg-neutral-50">
-          <td colSpan={6} className="px-5 py-3">
+          <td colSpan={6} className="space-y-4 px-5 py-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-neutral-500">Mouvement de stock :</span>
               <input
@@ -151,6 +159,7 @@ function StockRow({ item }: { item: StockItem }) {
                 − Sortie
               </Button>
             </div>
+            <EditStockForm item={item} onClose={() => setEditing(false)} />
           </td>
         </tr>
       )}
@@ -201,6 +210,145 @@ function CreateStockForm({ onDone }: { onDone: () => void }) {
         <Button type="button" variant="ghost" onClick={onDone}>
           Annuler
         </Button>
+      </div>
+    </form>
+  );
+}
+
+/** Why an article is locked, in French, for the manager. */
+function lockReasons(usage: StockUsage): string[] {
+  const reasons: string[] = [];
+  if (usage.dishes.length > 0) reasons.push(`utilisé dans les recettes de : ${usage.dishes.join(', ')}`);
+  if (usage.hasMovements) reasons.push('des mouvements de stock sont enregistrés');
+  if (usage.hasReplenishments) reasons.push('des demandes de réapprovisionnement existent');
+  if (usage.hasOrders) reasons.push('des commandes l\'ont consommé');
+  return reasons;
+}
+
+/** Edit / delete an article. While something refers to it (recipe, movement,
+ *  replenishment, order) only the thresholds can change and it cannot be deleted. */
+function EditStockForm({ item, onClose }: { item: StockItem; onClose: () => void }) {
+  const { data: usage, isLoading, error: usageError } = useStockUsage(item.id, true);
+  const update = useUpdateStock();
+  const remove = useDeleteStock();
+  const [confirming, setConfirming] = useState(false);
+  const [form, setForm] = useState({
+    name: item.name,
+    unit: item.unit,
+    quantityOnHand: String(item.quantityOnHand),
+    thresholdMin: String(item.thresholdMin),
+    thresholdMax: String(item.thresholdMax),
+  });
+
+  const locked = usage?.isLocked ?? true; // fail closed until we know
+  const reasons = usage ? lockReasons(usage) : [];
+  const error = (update.error ?? remove.error) as Error | null;
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    update.mutate(
+      {
+        id: item.id,
+        payload: {
+          name: form.name,
+          unit: form.unit,
+          quantityOnHand: Number(form.quantityOnHand),
+          thresholdMin: Number(form.thresholdMin),
+          thresholdMax: Number(form.thresholdMax),
+        },
+      },
+      { onSuccess: onClose },
+    );
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-3 rounded-xl border border-brand/10 bg-white p-4">
+      <h3 className="text-sm font-bold uppercase tracking-wide text-brand">Modifier l'article</h3>
+      {isLoading ? (
+        <p className="text-sm text-neutral-400">Vérification de l'utilisation de l'article…</p>
+      ) : usageError ? (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          Impossible de vérifier si l'article est utilisé : {(usageError as Error).message}. Seuls les seuils sont
+          modifiables.
+        </p>
+      ) : (
+        locked && (
+          <p className="rounded-xl bg-brand-pale px-4 py-3 text-sm text-brand">
+            Cet article est lié ({reasons.join(' · ')}). Seuls les seuils peuvent être modifiés ; il ne peut pas être
+            supprimé. Pour changer la quantité, utilisez un mouvement de stock.
+          </p>
+        )
+      )}
+      <div className="grid gap-3 sm:grid-cols-5">
+        <label className="block sm:col-span-2">
+          <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Nom</span>
+          <Input required disabled={locked} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Unité</span>
+          <Input required disabled={locked} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Quantité</span>
+          <Input
+            type="number"
+            min="0"
+            step="any"
+            required
+            disabled={locked}
+            value={form.quantityOnHand}
+            onChange={(e) => setForm({ ...form, quantityOnHand: e.target.value })}
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-3 sm:col-span-5 sm:max-w-md">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Recommande à (seuil min)</span>
+            <Input type="number" min="0" step="any" required value={form.thresholdMin} onChange={(e) => setForm({ ...form, thresholdMin: e.target.value })} />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Seuil max</span>
+            <Input type="number" min="0" step="any" required value={form.thresholdMax} onChange={(e) => setForm({ ...form, thresholdMax: e.target.value })} />
+          </label>
+        </div>
+      </div>
+      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error.message}</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" className="px-4 py-2" disabled={update.isPending || isLoading}>
+          {update.isPending ? 'Enregistrement…' : 'Enregistrer'}
+        </Button>
+        <Button type="button" variant="ghost" className="px-4 py-2" onClick={onClose}>
+          Annuler
+        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          {confirming ? (
+            <>
+              <span className="text-sm text-neutral-600">Supprimer « {item.name} » ?</span>
+              <Button
+                type="button"
+                variant="danger"
+                className="px-3 py-1.5 text-xs"
+                disabled={remove.isPending}
+                onClick={() => remove.mutate(item.id, { onError: () => setConfirming(false) })}
+              >
+                {remove.isPending ? 'Suppression…' : 'Oui, supprimer'}
+              </Button>
+              <Button type="button" variant="ghost" className="px-3 py-1.5 text-xs" onClick={() => setConfirming(false)}>
+                Non
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              className="border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+              disabled={locked}
+              title={locked ? 'Cet article est lié : suppression impossible' : undefined}
+              onClick={() => setConfirming(true)}
+            >
+              <Trash2 size={14} /> Supprimer l'article
+            </Button>
+          )}
+        </div>
       </div>
     </form>
   );
