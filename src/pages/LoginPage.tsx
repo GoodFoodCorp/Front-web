@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { OAuthButtons } from '../features/auth/components/OAuthButtons';
@@ -11,6 +12,7 @@ const DEMO_ACCOUNTS = [
   { label: 'Client', email: 'user@example.com', password: 'User1234!' },
   { label: 'Franchisé', email: 'manager@example.com', password: 'Manager123!' },
   { label: 'Siège', email: 'admin@example.com', password: 'Admin123!' },
+  { label: 'Livreur', email: 'livreur@example.com', password: 'Livreur123!' },
 ];
 
 export function LoginPage() {
@@ -32,6 +34,7 @@ export function LoginPage() {
           if (from) navigate(from, { replace: true });
           else if (roles.includes('manager')) navigate('/portal', { replace: true });
           else if (roles.includes('admin')) navigate('/admin', { replace: true });
+          else if (roles.includes('livreur')) navigate('/courier', { replace: true });
           else navigate('/', { replace: true });
         },
       },
@@ -63,6 +66,13 @@ export function LoginPage() {
       {/* Form panel */}
       <div className="flex items-center justify-center bg-cream p-6">
         <div className="w-full max-w-sm animate-[rise_0.5s]">
+          <Link
+            to="/"
+            className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition hover:underline"
+          >
+            <ArrowLeft size={16} /> Retour au site
+          </Link>
+
           <div className="mb-8 flex items-center gap-2 lg:hidden">
             <img src={logo} alt="Good Food" className="h-11 w-11" />
             <span className="font-display text-xl font-extrabold text-brand">Good Food</span>

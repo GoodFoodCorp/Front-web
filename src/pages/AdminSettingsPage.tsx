@@ -3,6 +3,7 @@ import { Plus, Tag, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import { useCategories, useCreateCategory, useDeleteCategory } from '../features/catalog/hooks/useMenu';
 
@@ -24,11 +25,18 @@ function CategoriesSection() {
   const create = useCreateCategory();
   const remove = useDeleteCategory();
   const [name, setName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const close = () => {
+    setAdding(false);
+    setName('');
+    create.reset();
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    create.mutate(name.trim(), { onSuccess: () => setName('') });
+    create.mutate(name.trim(), { onSuccess: close });
   };
 
   return (
@@ -41,21 +49,37 @@ function CategoriesSection() {
         Utilisées par tous les franchisés lorsqu'ils créent un plat (Burgers, Pizzas, Boissons…).
       </p>
 
-      <form onSubmit={submit} className="mt-4 flex gap-2">
-        <Input
-          className="max-w-xs"
-          placeholder="Nouvelle catégorie (ex. Tacos)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <Button type="submit" disabled={create.isPending || !name.trim()}>
-          <Plus size={16} /> Ajouter
-        </Button>
-      </form>
-      {create.isError && (
-        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-          {(create.error as Error).message}
-        </p>
+      <Button className="mt-4" onClick={() => setAdding(true)}>
+        <Plus size={16} /> Nouvelle catégorie
+      </Button>
+
+      {adding && (
+        <Modal title="Nouvelle catégorie" onClose={close} maxWidth="max-w-md">
+          <form onSubmit={submit} className="space-y-4">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Nom</span>
+              <Input
+                autoFocus
+                placeholder="ex. Tacos"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+            {create.isError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                {(create.error as Error).message}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button type="submit" disabled={create.isPending || !name.trim()}>
+                {create.isPending ? 'Ajout…' : 'Ajouter'}
+              </Button>
+              <Button type="button" variant="ghost" onClick={close}>
+                Annuler
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       <div className="mt-5">

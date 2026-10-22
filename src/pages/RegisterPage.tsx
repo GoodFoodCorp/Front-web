@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { OAuthButtons } from '../features/auth/components/OAuthButtons';
@@ -47,6 +48,13 @@ export function RegisterPage() {
       {/* Form panel */}
       <div className="flex items-center justify-center bg-cream p-6">
         <div className="w-full max-w-sm animate-[rise_0.5s]">
+          <Link
+            to="/"
+            className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition hover:underline"
+          >
+            <ArrowLeft size={16} /> Retour au site
+          </Link>
+
           <div className="mb-8 flex items-center gap-2 lg:hidden">
             <img src={logo} alt="Good Food" className="h-11 w-11" />
             <span className="font-display text-xl font-extrabold text-brand">Good Food</span>

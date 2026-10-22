@@ -1,9 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { stockApi } from '../api/stockApi';
 import type { CreateStockPayload, MovementPayload, UpdateStockPayload } from '../types/stock.types';
 
 export function useStocks() {
-  return useQuery({ queryKey: ['stocks'], queryFn: stockApi.list });
+  return useQuery({ queryKey: ['stocks'], queryFn: () => stockApi.list() });
+}
+
+/** Head office: the stock of each given restaurant, one query apiece (stock is scoped by tenant). */
+export function useNetworkStocks(restaurantIds: string[]) {
+  return useQueries({
+    queries: restaurantIds.map((tenantId) => ({
+      queryKey: ['stocks', 'tenant', tenantId],
+      queryFn: () => stockApi.list(tenantId),
+    })),
+  });
 }
 
 export function useReplenishments() {

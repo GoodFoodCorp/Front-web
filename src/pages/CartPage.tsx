@@ -30,7 +30,7 @@ export function CartPage() {
   const [manualAddress, setManualAddress] = useState('');
 
   const subtotal = totalCents();
-  const discount = appliedPromo ? Math.round((subtotal * appliedPromo.percentOff) / 100) : 0;
+  const discount = appliedPromo ? Math.floor((subtotal * appliedPromo.percentOff) / 100) : 0;
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD_CENTS ? 0 : DELIVERY_FEE_CENTS;
   const total = Math.max(0, subtotal - discount) + deliveryFee;
 

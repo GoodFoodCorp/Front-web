@@ -9,6 +9,7 @@ import {
   Search,
   ShoppingCart,
   Store,
+  Truck,
   User,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -244,6 +245,9 @@ export function StorefrontLayout() {
                     )}
                     {roles.includes('admin') && (
                       <MenuLink to="/admin" icon={Store} label="Portail siège" onClick={() => setUserOpen(false)} />
+                    )}
+                    {roles.includes('livreur') && (
+                      <MenuLink to="/courier" icon={Truck} label="Espace livreur" onClick={() => setUserOpen(false)} />
                     )}
                     <button
                       onClick={() => {

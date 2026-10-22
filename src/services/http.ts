@@ -30,12 +30,13 @@ export async function http<T>(path: string, options: RequestInit = {}): Promise<
   if (res.status === 401 && useAuthStore.getState().accessToken) {
     useAuthStore.getState().logout();
   }
+  const text = await res.text();
+  const body = text ? (JSON.parse(text) as unknown) : null;
+
   if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new ApiError(res.status, body?.error ?? `Erreur ${res.status}`);
+    throw new ApiError(res.status, (body as { error?: string } | null)?.error ?? `Erreur ${res.status}`);
   }
-  // 204 No Content (every DELETE in this app) has no body — res.json() would
-  // throw on the empty string, silently failing the calling mutation.
+  // 204 No Content (every DELETE in this app) has no body.
   if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  return body as T;
 }
