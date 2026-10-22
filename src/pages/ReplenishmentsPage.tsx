@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react';
-import { Badge, type BadgeTone } from '../components/Badge';
+import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
@@ -9,23 +9,9 @@ import {
   useStocks,
   useUpdateReplenishmentStatus,
 } from '../features/stock/hooks/useStock';
+import { NEXT_STATUS, STATUS_META } from '../features/stock/replenishmentStatus';
 import { useAuthStore } from '../store/authStore';
-import type { ReplenishmentRequest, ReplenishmentStatus } from '../features/stock/types/stock.types';
-
-const STATUS_META: Record<ReplenishmentStatus, { label: string; tone: BadgeTone }> = {
-  PENDING: { label: 'En attente', tone: 'yellow' },
-  APPROVED: { label: 'Approuvée', tone: 'blue' },
-  ORDERED: { label: 'Commandée', tone: 'blue' },
-  RECEIVED: { label: 'Reçue', tone: 'green' },
-  CANCELLED: { label: 'Annulée', tone: 'red' },
-};
-
-// Only head office (admin) may advance a request; managers get a read-only view.
-const NEXT_STATUS: Partial<Record<ReplenishmentStatus, string>> = {
-  PENDING: 'APPROVED',
-  APPROVED: 'ORDERED',
-  ORDERED: 'RECEIVED',
-};
+import type { ReplenishmentRequest } from '../features/stock/types/stock.types';
 
 export function ReplenishmentsPage() {
   const { data: requests, isLoading } = useReplenishments();
@@ -97,7 +83,7 @@ function RequestRow({
           disabled={update.isPending}
           onClick={() => update.mutate({ id: req.id, status: next })}
         >
-          → {STATUS_META[next as ReplenishmentStatus].label}
+          → {STATUS_META[next].label}
         </Button>
       )}
       {canAct && req.status === 'PENDING' && (

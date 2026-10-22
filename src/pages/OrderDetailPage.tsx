@@ -1,10 +1,12 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, MapPin } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, MapPin, Truck } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Spinner } from '../components/Spinner';
 import { OrderStatusBadge } from '../features/orders/components/OrderStatusBadge';
 import { useOrder } from '../features/orders/hooks/useOrders';
 import type { OrderStatus } from '../features/orders/types/order.types';
+import { DeliveryStatusBadge } from '../features/delivery/components/DeliveryStatusBadge';
+import { useOrderDelivery } from '../features/delivery/hooks/useDelivery';
 import { formatPrice } from '../utils/format';
 
 const TIMELINE: OrderStatus[] = [
@@ -28,11 +30,13 @@ export function OrderDetailPage() {
   const location = useLocation();
   const { data: order, isLoading } = useOrder(id);
   const justPaid = (location.state as { justPaid?: boolean } | null)?.justPaid;
+  const { data: deliveryDetail } = useOrderDelivery(order?.id, !!order && order.status !== 'CANCELLED');
 
   if (isLoading) return <Spinner label="Chargement…" />;
   if (!order) return <p className="text-neutral-500">Commande introuvable.</p>;
 
   const currentIndex = TIMELINE.indexOf(order.status);
+  const delivery = deliveryDetail?.delivery;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -89,6 +93,35 @@ export function OrderDetailPage() {
               );
             })}
           </div>
+        </Card>
+      )}
+
+      {delivery && (
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Truck size={18} className="text-brand" />
+              <h2 className="font-display font-bold text-brand">Livraison</h2>
+            </div>
+            <DeliveryStatusBadge status={delivery.status} />
+          </div>
+
+          {delivery.status === 'DELIVERED' && delivery.deliveredAt ? (
+            <p className="text-sm text-neutral-500">
+              Livrée le {new Date(delivery.deliveredAt).toLocaleString('fr-FR')}
+            </p>
+          ) : (
+            delivery.estimatedDeliveryTime &&
+            delivery.status !== 'CANCELLED' && (
+              <p className="text-sm text-neutral-500">
+                Arrivée estimée vers{' '}
+                {new Date(delivery.estimatedDeliveryTime).toLocaleTimeString('fr-FR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+            )
+          )}
         </Card>
       )}
 

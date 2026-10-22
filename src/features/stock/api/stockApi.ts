@@ -16,7 +16,8 @@ interface StockDetail {
 }
 
 export const stockApi = {
-  list: () => http<StockItem[]>('/api/stocks'),
+  /** Head office must name the restaurant (tenantId); a franchisee always gets their own. */
+  list: (tenantId?: string) => http<StockItem[]>(tenantId ? `/api/stocks?tenantId=${tenantId}` : '/api/stocks'),
 
   get: (id: string) => http<StockDetail>(`/api/stocks/${id}`),
 

@@ -5,6 +5,7 @@ import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
 import { LocationBadge } from '../components/LocationBadge';
+import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import {
   useCreateReplenishment,
@@ -20,8 +21,12 @@ import type { StockItem, StockUsage } from '../features/stock/types/stock.types'
 export function StockPage() {
   const { data: stocks, isLoading } = useStocks();
   const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   if (isLoading) return <Spinner label="Chargement des stocks…" />;
+
+  // Read the live item so the popup never shows a stale copy (and closes itself if the item is deleted).
+  const editingItem = stocks?.find((s) => s.id === editingId);
 
   return (
     <div className="space-y-6">
@@ -36,16 +41,10 @@ export function StockPage() {
       <div className="rounded-2xl border border-brand/10 bg-white">
         <div className="flex items-center justify-between border-b border-brand/10 px-5 py-4">
           <h2 className="font-display font-bold text-brand">Inventaire</h2>
-          <Button onClick={() => setShowCreate((v) => !v)} className="px-4 py-2">
-            <Plus size={16} /> Ajouter
+          <Button onClick={() => setShowCreate(true)} className="px-4 py-2">
+            <Plus size={16} /> Nouvel article
           </Button>
         </div>
-
-        {showCreate && (
-          <div className="border-b border-brand/10 p-5">
-            <CreateStockForm onDone={() => setShowCreate(false)} />
-          </div>
-        )}
 
         {!stocks || stocks.length === 0 ? (
           <div className="p-8">
@@ -66,23 +65,33 @@ export function StockPage() {
               </thead>
               <tbody className="divide-y divide-brand/5">
                 {stocks.map((item) => (
-                  <StockRow key={item.id} item={item} />
+                  <StockRow key={item.id} item={item} onEdit={() => setEditingId(item.id)} />
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {showCreate && (
+        <Modal title="Nouvel article" onClose={() => setShowCreate(false)} maxWidth="max-w-xl">
+          <CreateStockForm onDone={() => setShowCreate(false)} />
+        </Modal>
+      )}
+
+      {editingItem && (
+        <Modal title={`Modifier · ${editingItem.name}`} onClose={() => setEditingId(null)} maxWidth="max-w-xl">
+          <StockEditModalBody item={editingItem} onClose={() => setEditingId(null)} />
+        </Modal>
+      )}
     </div>
   );
 }
 
-function StockRow({ item }: { item: StockItem }) {
+/** Popup body: register a stock movement, then edit / delete the article. */
+function StockEditModalBody({ item, onClose }: { item: StockItem; onClose: () => void }) {
   const movement = useRegisterMovement();
-  const replenish = useCreateReplenishment();
-  const [editing, setEditing] = useState(false);
   const [qty, setQty] = useState('');
-  const [ordered, setOrdered] = useState(false);
 
   const apply = (type: 'IN' | 'OUT') => {
     const quantity = Number(qty);
@@ -92,6 +101,39 @@ function StockRow({ item }: { item: StockItem }) {
       { onSuccess: () => setQty('') },
     );
   };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl bg-neutral-50 p-4">
+        <p className="text-sm text-neutral-500">
+          En stock : <span className="font-display text-lg font-bold text-brand">{item.quantityOnHand} {item.unit}</span>
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-neutral-500">Mouvement de stock :</span>
+          <input
+            type="number"
+            min="0"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            placeholder="Qté"
+            className="w-24 rounded-lg border border-brand/15 px-2 py-1.5 text-sm outline-none focus:border-brand"
+          />
+          <Button variant="ghost" onClick={() => apply('IN')} className="px-3 py-1.5 text-xs" disabled={movement.isPending}>
+            + Entrée
+          </Button>
+          <Button variant="accent" onClick={() => apply('OUT')} className="px-3 py-1.5 text-xs" disabled={movement.isPending}>
+            − Sortie
+          </Button>
+        </div>
+      </div>
+      <EditStockForm item={item} onClose={onClose} />
+    </div>
+  );
+}
+
+function StockRow({ item, onEdit }: { item: StockItem; onEdit: () => void }) {
+  const replenish = useCreateReplenishment();
+  const [ordered, setOrdered] = useState(false);
 
   const order = () => {
     const suggested = Math.max(item.thresholdMax - item.quantityOnHand, item.thresholdMin);
@@ -119,7 +161,7 @@ function StockRow({ item }: { item: StockItem }) {
         </td>
         <td className="px-5 py-3">
           <div className="flex items-center justify-end gap-2">
-            <Button variant="ghost" onClick={() => setEditing((v) => !v)} className="px-3 py-1.5 text-xs">
+            <Button variant="ghost" onClick={onEdit} className="px-3 py-1.5 text-xs">
               Modifier
             </Button>
             <Button
@@ -139,30 +181,6 @@ function StockRow({ item }: { item: StockItem }) {
           </div>
         </td>
       </tr>
-      {editing && (
-        <tr className="bg-neutral-50">
-          <td colSpan={6} className="space-y-4 px-5 py-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-neutral-500">Mouvement de stock :</span>
-              <input
-                type="number"
-                min="0"
-                value={qty}
-                onChange={(e) => setQty(e.target.value)}
-                placeholder="Qté"
-                className="w-20 rounded-lg border border-brand/15 px-2 py-1.5 text-sm outline-none focus:border-brand"
-              />
-              <Button variant="ghost" onClick={() => apply('IN')} className="px-3 py-1.5 text-xs" disabled={movement.isPending}>
-                + Entrée
-              </Button>
-              <Button variant="accent" onClick={() => apply('OUT')} className="px-3 py-1.5 text-xs" disabled={movement.isPending}>
-                − Sortie
-              </Button>
-            </div>
-            <EditStockForm item={item} onClose={() => setEditing(false)} />
-          </td>
-        </tr>
-      )}
     </>
   );
 }
@@ -191,24 +209,39 @@ function CreateStockForm({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-6">
-      <Input
-        className="sm:col-span-2"
-        placeholder="Nom (ex. Tomates)"
-        required
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-      />
-      <Input placeholder="Unité" required value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
-      <Input type="number" placeholder="Qté" required value={form.quantityOnHand} onChange={(e) => setForm({ ...form, quantityOnHand: e.target.value })} />
-      <Input type="number" placeholder="Seuil min" required value={form.thresholdMin} onChange={(e) => setForm({ ...form, thresholdMin: e.target.value })} />
-      <Input type="number" placeholder="Seuil max" required value={form.thresholdMax} onChange={(e) => setForm({ ...form, thresholdMax: e.target.value })} />
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <label className="block sm:col-span-2">
+        <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Nom</span>
+        <Input
+          placeholder="ex. Tomates"
+          required
+          autoFocus
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Unité</span>
+        <Input placeholder="kg, L, pièces…" required value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+      </label>
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Quantité en stock</span>
+        <Input type="number" min="0" step="any" required value={form.quantityOnHand} onChange={(e) => setForm({ ...form, quantityOnHand: e.target.value })} />
+      </label>
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Recommande à (seuil min)</span>
+        <Input type="number" min="0" step="any" required value={form.thresholdMin} onChange={(e) => setForm({ ...form, thresholdMin: e.target.value })} />
+      </label>
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Seuil max</span>
+        <Input type="number" min="0" step="any" required value={form.thresholdMax} onChange={(e) => setForm({ ...form, thresholdMax: e.target.value })} />
+      </label>
       {(formError || create.isError) && (
-        <p className="sm:col-span-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
           {formError ?? stockErrorMessage(create.error as Error)}
         </p>
       )}
-      <div className="flex gap-2 sm:col-span-6">
+      <div className="flex gap-2 sm:col-span-2">
         <Button type="submit" disabled={create.isPending}>
           {create.isPending ? 'Création…' : "Créer l'article"}
         </Button>
@@ -304,8 +337,7 @@ function EditStockForm({ item, onClose }: { item: StockItem; onClose: () => void
   };
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-xl border border-brand/10 bg-white p-4">
-      <h3 className="text-sm font-bold uppercase tracking-wide text-brand">Modifier l'article</h3>
+    <form onSubmit={submit} className="space-y-4">
       {isLoading ? (
         <p className="text-sm text-neutral-400">Vérification de l'utilisation de l'article…</p>
       ) : usageError ? (
@@ -321,7 +353,7 @@ function EditStockForm({ item, onClose }: { item: StockItem; onClose: () => void
           </p>
         )
       )}
-      <div className="grid gap-3 sm:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="block sm:col-span-2">
           <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Nom</span>
           <Input required disabled={locked} value={shown.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -342,16 +374,14 @@ function EditStockForm({ item, onClose }: { item: StockItem; onClose: () => void
             onChange={(e) => setForm({ ...form, quantityOnHand: e.target.value })}
           />
         </label>
-        <div className="grid grid-cols-2 gap-3 sm:col-span-5 sm:max-w-md">
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Recommande à (seuil min)</span>
-            <Input type="number" min="0" step="any" required value={form.thresholdMin} onChange={(e) => setForm({ ...form, thresholdMin: e.target.value })} />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Seuil max</span>
-            <Input type="number" min="0" step="any" required value={form.thresholdMax} onChange={(e) => setForm({ ...form, thresholdMax: e.target.value })} />
-          </label>
-        </div>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Recommande à (seuil min)</span>
+          <Input type="number" min="0" step="any" required value={form.thresholdMin} onChange={(e) => setForm({ ...form, thresholdMin: e.target.value })} />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Seuil max</span>
+          <Input type="number" min="0" step="any" required value={form.thresholdMax} onChange={(e) => setForm({ ...form, thresholdMax: e.target.value })} />
+        </label>
       </div>
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
       <div className="flex flex-wrap items-center gap-2">
