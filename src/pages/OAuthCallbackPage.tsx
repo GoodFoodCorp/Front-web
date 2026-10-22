@@ -39,7 +39,12 @@ export function OAuthCallbackPage() {
       return;
     }
 
-    hydrate({ access_token: accessToken, refresh_token: refreshToken });
+    try {
+      hydrate({ access_token: accessToken, refresh_token: refreshToken });
+    } catch (e) {
+      setError((e as Error).message);
+      return;
+    }
 
     const roles = (decodeJwt(accessToken).role_slugs as string[]) ?? [];
     if (roles.includes('manager')) navigate('/portal', { replace: true });

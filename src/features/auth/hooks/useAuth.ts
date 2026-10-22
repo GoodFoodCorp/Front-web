@@ -6,18 +6,27 @@ import { useCartStore } from '../../../store/cartStore';
 
 type Credentials = { email: string; password: string };
 
-/** Hydrates the session store from a login response's JWT. */
+export const COURIER_MOBILE_ONLY_MESSAGE =
+  "Les livreurs se connectent uniquement depuis l'application mobile.";
+
+/** Hydrates the session store from a login response's JWT. Courier accounts are
+ *  refused: they sign in from the mobile app only. */
 export function useHydrateSession() {
   const setSession = useAuthStore((s) => s.setSession);
   return (data: LoginResponse) => {
     const claims = decodeJwt(data.access_token);
+    const roles = (claims.role_slugs as string[]) ?? [];
+    if (roles.includes('livreur')) {
+      void authApi.logout(data.refresh_token).catch(() => undefined);
+      throw new Error(COURIER_MOBILE_ONLY_MESSAGE);
+    }
     setSession({
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       userId: (claims.sub as string) ?? null,
       email: (claims.email as string) ?? null,
       tenantId: (claims.tenant_id as string) || null,
-      roles: (claims.role_slugs as string[]) ?? [],
+      roles,
     });
   };
 }

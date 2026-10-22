@@ -34,7 +34,6 @@ import { TermsPage } from '../pages/TermsPage';
 import { PrivacyPolicyPage } from '../pages/PrivacyPolicyPage';
 import { BecomeFranchiseePage } from '../pages/BecomeFranchiseePage';
 import { FranchiseLoginPage } from '../pages/FranchiseLoginPage';
-import { CourierPage } from '../pages/CourierPage';
 
 /** Route table. Guards live in RequireRole; pages stay presentational. */
 export function AppRouter() {
@@ -92,16 +91,6 @@ export function AppRouter() {
         <Route path="become-franchisee" element={<BecomeFranchiseePage />} />
         <Route path="franchise-login" element={<FranchiseLoginPage />} />
       </Route>
-
-      {/* Courier web app (stand-in for the mobile app) */}
-      <Route
-        path="/courier"
-        element={
-          <RequireRole role="livreur">
-            <CourierPage />
-          </RequireRole>
-        }
-      />
 
       {/* Franchisee portal (manager only) */}
       <Route

@@ -12,7 +12,6 @@ const DEMO_ACCOUNTS = [
   { label: 'Client', email: 'user@example.com', password: 'User1234!' },
   { label: 'Franchisé', email: 'manager@example.com', password: 'Manager123!' },
   { label: 'Siège', email: 'admin@example.com', password: 'Admin123!' },
-  { label: 'Livreur', email: 'livreur@example.com', password: 'Livreur123!' },
 ];
 
 export function LoginPage() {
@@ -34,7 +33,6 @@ export function LoginPage() {
           if (from) navigate(from, { replace: true });
           else if (roles.includes('manager')) navigate('/portal', { replace: true });
           else if (roles.includes('admin')) navigate('/admin', { replace: true });
-          else if (roles.includes('livreur')) navigate('/courier', { replace: true });
           else navigate('/', { replace: true });
         },
       },
