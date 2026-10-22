@@ -1,0 +1,20 @@
+name: CI Docker front-web
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: GoodFoodCorp/ci-template/.github/workflows/build-deploy.yml@main
+    with:
+      app_name: "front-web"
+    secrets:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      ORG_PIPELINE_TOKEN: ${{ secrets.ORG_PIPELINE_TOKEN }}

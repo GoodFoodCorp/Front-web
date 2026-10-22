@@ -16,13 +16,15 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { StockPage } from '../pages/StockPage';
 import { ReplenishmentsPage } from '../pages/ReplenishmentsPage';
 import { PortalOrdersPage } from '../pages/PortalOrdersPage';
-import { MenuManagementPage } from '../pages/MenuManagementPage';
+import { CatalogManagementPage } from '../pages/CatalogManagementPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { ReservationsPage } from '../pages/ReservationsPage';
 import { PortalReservationsPage } from '../pages/PortalReservationsPage';
 import { SuppliersPage } from '../pages/SuppliersPage';
 import { AdminFranchisesPage } from '../pages/AdminFranchisesPage';
 import { AdminPromotionsPage } from '../pages/AdminPromotionsPage';
+import { AdminSettingsPage } from '../pages/AdminSettingsPage';
+import { AdminStockPage } from '../pages/AdminStockPage';
 import { ComingSoonPage } from '../pages/ComingSoonPage';
 import { AboutPage } from '../pages/AboutPage';
 import { CareersPage } from '../pages/CareersPage';
@@ -32,6 +34,7 @@ import { TermsPage } from '../pages/TermsPage';
 import { PrivacyPolicyPage } from '../pages/PrivacyPolicyPage';
 import { BecomeFranchiseePage } from '../pages/BecomeFranchiseePage';
 import { FranchiseLoginPage } from '../pages/FranchiseLoginPage';
+import { CourierPage } from '../pages/CourierPage';
 
 /** Route table. Guards live in RequireRole; pages stay presentational. */
 export function AppRouter() {
@@ -90,6 +93,16 @@ export function AppRouter() {
         <Route path="franchise-login" element={<FranchiseLoginPage />} />
       </Route>
 
+      {/* Courier web app (stand-in for the mobile app) */}
+      <Route
+        path="/courier"
+        element={
+          <RequireRole role="livreur">
+            <CourierPage />
+          </RequireRole>
+        }
+      />
+
       {/* Franchisee portal (manager only) */}
       <Route
         path="/portal"
@@ -100,7 +113,7 @@ export function AppRouter() {
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="menu" element={<MenuManagementPage />} />
+        <Route path="menu" element={<CatalogManagementPage />} />
         <Route path="stock" element={<StockPage />} />
         <Route path="replenishments" element={<ReplenishmentsPage />} />
         <Route path="suppliers" element={<SuppliersPage />} />
@@ -118,12 +131,12 @@ export function AppRouter() {
         }
       >
         <Route index element={<AdminDashboardPage />} />
-        <Route path="stock" element={<ComingSoonPage title="Gestion des stocks" subtitle="Vue consolidée des stocks du réseau" />} />
-        <Route path="menu" element={<ComingSoonPage title="Gestion des Plats" subtitle="Catalogue plats du réseau" />} />
+        <Route path="stock" element={<AdminStockPage />} />
+        <Route path="menu" element={<CatalogManagementPage />} />
         <Route path="promotions" element={<AdminPromotionsPage />} />
         <Route path="personnel" element={<ComingSoonPage title="Personnel" subtitle="Effectifs du réseau" />} />
         <Route path="franchises" element={<AdminFranchisesPage />} />
-        <Route path="settings" element={<ComingSoonPage title="Paramètres" />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

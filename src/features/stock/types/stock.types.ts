@@ -18,6 +18,8 @@ export interface StockMovement {
   reason: string;
   createdAt: string;
   createdBy: string;
+  /** Quantity an order consumption could not take (insufficient stock); 0 otherwise. */
+  shortfall?: number;
 }
 
 export type ReplenishmentStatus = 'PENDING' | 'APPROVED' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
@@ -46,6 +48,18 @@ export interface CreateStockPayload {
   quantityOnHand: number;
   thresholdMin: number;
   thresholdMax: number;
+}
+
+export type UpdateStockPayload = CreateStockPayload;
+
+/** What ties an article to the rest of the system; a locked article cannot be
+ *  deleted nor renamed (recipes, movements, replenishments or orders use it). */
+export interface StockUsage {
+  dishes: string[];
+  hasMovements: boolean;
+  hasReplenishments: boolean;
+  hasOrders: boolean;
+  isLocked: boolean;
 }
 
 export interface MovementPayload {

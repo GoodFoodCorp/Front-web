@@ -30,7 +30,7 @@ export function CartPage() {
   const [manualAddress, setManualAddress] = useState('');
 
   const subtotal = totalCents();
-  const discount = appliedPromo ? Math.round((subtotal * appliedPromo.percentOff) / 100) : 0;
+  const discount = appliedPromo ? Math.floor((subtotal * appliedPromo.percentOff) / 100) : 0;
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD_CENTS ? 0 : DELIVERY_FEE_CENTS;
   const total = Math.max(0, subtotal - discount) + deliveryFee;
 
@@ -116,7 +116,9 @@ export function CartPage() {
                   <div key={line.item.id} className="flex items-center gap-4 px-5 py-4">
                     <div
                       className="h-16 w-16 shrink-0 rounded-xl bg-cover bg-center"
-                      style={{ backgroundImage: `url(${dishPhoto(line.item.name, line.item.category)})` }}
+                      style={{
+                        backgroundImage: `url(${line.item.imageUrl || dishPhoto(line.item.name, line.item.category)})`,
+                      }}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">

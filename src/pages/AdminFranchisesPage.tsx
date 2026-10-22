@@ -4,17 +4,23 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import { useAllRestaurants, useCreateRestaurant, useUpdateRestaurant } from '../features/restaurants/hooks/useRestaurants';
 import type { Restaurant } from '../features/restaurants/types/restaurant.types';
+import { useNetworkAnalytics, useRestaurantAnalytics } from '../features/analytics/hooks/useAnalytics';
 import { demoMetricsFor } from '../utils/demoMetrics';
 import { formatPrice } from '../utils/format';
 import { restaurantPhoto } from '../utils/images';
+
+/** Revenue and order counts come from analytics-service over this window. */
+const ANALYTICS_DAYS = 30;
 
 const STATUS_FILTERS = ['Tous les statuts', 'Actif', 'Inactif'] as const;
 
 export function AdminFranchisesPage() {
   const { data: restaurants, isLoading } = useAllRestaurants();
+  const { data: network } = useNetworkAnalytics(ANALYTICS_DAYS);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<(typeof STATUS_FILTERS)[number]>('Tous les statuts');
   const [creating, setCreating] = useState(false);
@@ -34,10 +40,6 @@ export function AdminFranchisesPage() {
   const total = restaurants?.length ?? 0;
   const active = restaurants?.filter((r) => r.isActive).length ?? 0;
   const inactive = total - active;
-  const totalRevenueCents = (restaurants ?? []).reduce(
-    (sum, r) => sum + demoMetricsFor(r.id).monthlyRevenueCents,
-    0,
-  );
 
   return (
     <div className="space-y-6">
@@ -50,7 +52,7 @@ export function AdminFranchisesPage() {
         <StatCard label="Total Franchisés" value={String(total)} />
         <StatCard label="Actifs" value={String(active)} tone="text-brand" />
         <StatCard label="Inactifs" value={String(inactive)} tone={inactive > 0 ? 'text-neutral-500' : 'text-brand'} />
-        <StatCard label="Revenu Total Mensuel (estimé)" value={formatPrice(totalRevenueCents)} />
+        <StatCard label="Revenu du réseau (30 j)" value={network ? formatPrice(network.revenueCents) : '—'} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -71,19 +73,22 @@ export function AdminFranchisesPage() {
         </select>
         <Button
           className="ml-auto"
-          onClick={() => {
-            setCreating((v) => !v);
-            setEditing(null);
-          }}
+          onClick={() => setCreating(true)}
         >
           <Plus size={18} /> Ajouter un Franchisé
         </Button>
       </div>
 
       {creating && (
-        <div className="rounded-2xl border border-brand/10 bg-white p-5">
+        <Modal title="Ajouter un franchisé" onClose={() => setCreating(false)} maxWidth="max-w-xl">
           <RestaurantCreateForm onDone={() => setCreating(false)} onCancel={() => setCreating(false)} />
-        </div>
+        </Modal>
+      )}
+
+      {editing && (
+        <Modal title={`Modifier · ${editing.name}`} onClose={() => setEditing(null)} maxWidth="max-w-xl">
+          <RestaurantEditForm restaurant={editing} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
+        </Modal>
       )}
 
       {!restaurants || restaurants.length === 0 ? (
@@ -92,15 +97,9 @@ export function AdminFranchisesPage() {
         <EmptyState icon="🔍" title="Aucun résultat" hint="Essayez une autre recherche ou un autre statut." />
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((r, i) =>
-            editing?.id === r.id ? (
-              <div key={r.id} className="rounded-2xl border border-brand/10 bg-white p-5 sm:col-span-2 lg:col-span-3">
-                <RestaurantEditForm restaurant={r} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
-              </div>
-            ) : (
-              <FranchiseCard key={r.id} restaurant={r} index={i} onEdit={() => setEditing(r)} />
-            ),
-          )}
+          {filtered.map((r, i) => (
+            <FranchiseCard key={r.id} restaurant={r} index={i} onEdit={() => setEditing(r)} />
+          ))}
         </div>
       )}
     </div>
@@ -119,6 +118,7 @@ function StatCard({ label, value, tone = 'text-brand' }: { label: string; value:
 function FranchiseCard({ restaurant, index, onEdit }: { restaurant: Restaurant; index: number; onEdit: () => void }) {
   const [showDetails, setShowDetails] = useState(false);
   const metrics = demoMetricsFor(restaurant.id);
+  const { data: kpi } = useRestaurantAnalytics(ANALYTICS_DAYS, restaurant.id);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-brand/10 bg-white">
@@ -130,7 +130,10 @@ function FranchiseCard({ restaurant, index, onEdit }: { restaurant: Restaurant; 
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-display font-bold text-brand">{restaurant.name}</h3>
-          <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-neutral-500">
+          <span
+            title="Note estimée (aucun service d'avis pour le moment)"
+            className="flex shrink-0 items-center gap-1 text-xs font-semibold text-neutral-500"
+          >
             <Star size={13} className="fill-accent text-accent" /> {metrics.rating}
           </span>
         </div>
@@ -140,12 +143,12 @@ function FranchiseCard({ restaurant, index, onEdit }: { restaurant: Restaurant; 
 
         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-brand/10 pt-3 text-sm">
           <div>
-            <p className="text-xs text-neutral-400">Revenu mensuel (estimé)</p>
-            <p className="font-display font-bold text-brand">{formatPrice(metrics.monthlyRevenueCents)}</p>
+            <p className="text-xs text-neutral-400">Revenu (30 j)</p>
+            <p className="font-display font-bold text-brand">{kpi ? formatPrice(kpi.revenueCents) : '—'}</p>
           </div>
           <div>
-            <p className="text-xs text-neutral-400">Commandes/mois (estimé)</p>
-            <p className="font-display font-bold text-brand">{metrics.ordersPerMonth}</p>
+            <p className="text-xs text-neutral-400">Commandes (30 j)</p>
+            <p className="font-display font-bold text-brand">{kpi ? kpi.ordersCount : '—'}</p>
           </div>
           <div>
             <p className="text-xs text-neutral-400">Personnel (estimé)</p>
@@ -184,6 +187,15 @@ function FranchiseCard({ restaurant, index, onEdit }: { restaurant: Restaurant; 
   );
 }
 
+function Field({ label, children, wide = false }: { label: string; children: React.ReactNode; wide?: boolean }) {
+  return (
+    <label className={wide ? 'block sm:col-span-2' : 'block'}>
+      <span className="mb-1.5 block text-xs font-semibold text-neutral-600">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 function RestaurantCreateForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
   const create = useCreateRestaurant();
   const [form, setForm] = useState({ name: '', slug: '', address: '', city: '', plan: 'standard' });
@@ -194,47 +206,28 @@ function RestaurantCreateForm({ onDone, onCancel }: { onDone: () => void; onCanc
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-12">
-      <Input
-        className="sm:col-span-4"
-        placeholder="Nom (ex. Good Food Nice)"
-        required
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-      />
-      <Input
-        className="sm:col-span-3"
-        placeholder="Slug (ex. good-food-nice)"
-        required
-        value={form.slug}
-        onChange={(e) => setForm({ ...form, slug: e.target.value })}
-      />
-      <Input
-        className="sm:col-span-3"
-        placeholder="Plan"
-        value={form.plan}
-        onChange={(e) => setForm({ ...form, plan: e.target.value })}
-      />
-      <Input
-        className="sm:col-span-6"
-        placeholder="Adresse"
-        required
-        value={form.address}
-        onChange={(e) => setForm({ ...form, address: e.target.value })}
-      />
-      <Input
-        className="sm:col-span-6"
-        placeholder="Ville"
-        required
-        value={form.city}
-        onChange={(e) => setForm({ ...form, city: e.target.value })}
-      />
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <Field label="Nom" wide>
+        <Input placeholder="ex. Good Food Nice" required autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      </Field>
+      <Field label="Slug">
+        <Input placeholder="ex. good-food-nice" required value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} />
+      </Field>
+      <Field label="Plan">
+        <Input value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })} />
+      </Field>
+      <Field label="Adresse">
+        <Input required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+      </Field>
+      <Field label="Ville">
+        <Input required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+      </Field>
       {create.isError && (
-        <p className="sm:col-span-12 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
           {(create.error as Error).message}
         </p>
       )}
-      <div className="flex gap-2 sm:col-span-12">
+      <div className="flex gap-2 sm:col-span-2">
         <Button type="submit" disabled={create.isPending}>
           {create.isPending ? 'Création…' : 'Créer le franchisé'}
         </Button>
@@ -269,42 +262,26 @@ function RestaurantEditForm({
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-12">
-      <Input
-        className="sm:col-span-4"
-        placeholder="Nom"
-        required
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-      />
-      <Input
-        className="sm:col-span-4"
-        placeholder="Adresse"
-        required
-        value={form.address}
-        onChange={(e) => setForm({ ...form, address: e.target.value })}
-      />
-      <Input
-        className="sm:col-span-3"
-        placeholder="Ville"
-        required
-        value={form.city}
-        onChange={(e) => setForm({ ...form, city: e.target.value })}
-      />
-      <label className="flex items-center gap-2 text-sm font-semibold text-neutral-600 sm:col-span-1">
-        <input
-          type="checkbox"
-          checked={form.isActive}
-          onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-        />
-        Actif
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <Field label="Nom" wide>
+        <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      </Field>
+      <Field label="Adresse">
+        <Input required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+      </Field>
+      <Field label="Ville">
+        <Input required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+      </Field>
+      <label className="flex items-center gap-2 text-sm font-semibold text-neutral-600 sm:col-span-2">
+        <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+        Restaurant actif
       </label>
       {update.isError && (
-        <p className="sm:col-span-12 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
           {(update.error as Error).message}
         </p>
       )}
-      <div className="flex gap-2 sm:col-span-12">
+      <div className="flex gap-2 sm:col-span-2">
         <Button type="submit" disabled={update.isPending}>
           {update.isPending ? 'Enregistrement…' : 'Enregistrer'}
         </Button>

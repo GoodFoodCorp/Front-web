@@ -5,6 +5,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import {
   useCreatePromoCode,
@@ -52,20 +53,21 @@ export function AdminPromotionsPage() {
       </div>
 
       <div className="flex justify-end">
-        <Button
-          onClick={() => {
-            setCreating((v) => !v);
-            setEditing(null);
-          }}
-        >
+        <Button onClick={() => setCreating(true)}>
           <Plus size={18} /> Créer un code promo
         </Button>
       </div>
 
       {creating && (
-        <div className="rounded-2xl border border-brand/10 bg-white p-5">
+        <Modal title="Créer un code promo" onClose={() => setCreating(false)} maxWidth="max-w-xl">
           <PromoForm onDone={() => setCreating(false)} onCancel={() => setCreating(false)} />
-        </div>
+        </Modal>
+      )}
+
+      {editing && (
+        <Modal title={`Modifier · ${editing.code}`} onClose={() => setEditing(null)} maxWidth="max-w-xl">
+          <PromoForm promo={editing} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
+        </Modal>
       )}
 
       {!promos || promos.length === 0 ? (
@@ -84,14 +86,7 @@ export function AdminPromotionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-brand/10">
-              {promos.map((p) =>
-                editing?.id === p.id ? (
-                  <tr key={p.id}>
-                    <td colSpan={6} className="p-5">
-                      <PromoForm promo={p} onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
-                    </td>
-                  </tr>
-                ) : (
+              {promos.map((p) => (
                   <tr key={p.id}>
                     <td className="px-5 py-3 font-display font-bold text-brand">
                       <span className="inline-flex items-center gap-1.5">
@@ -115,7 +110,7 @@ export function AdminPromotionsPage() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" onClick={() => { setEditing(p); setCreating(false); }} className="px-3 py-1.5 text-xs">
+                        <Button variant="ghost" onClick={() => setEditing(p)} className="px-3 py-1.5 text-xs">
                           Modifier
                         </Button>
                         <Button
@@ -130,8 +125,7 @@ export function AdminPromotionsPage() {
                       </div>
                     </td>
                   </tr>
-                ),
-              )}
+              ))}
             </tbody>
           </table>
         </div>
@@ -186,55 +180,62 @@ function PromoForm({
   };
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-12">
-      <Input
-        className="sm:col-span-4"
-        placeholder="Code (ex. WELCOME10)"
-        required
-        disabled={!!promo}
-        value={form.code}
-        onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-      />
-      <Input
-        className="sm:col-span-2"
-        type="number"
-        min={1}
-        max={100}
-        placeholder="% remise"
-        required
-        value={form.percent_off}
-        onChange={(e) => setForm({ ...form, percent_off: Number(e.target.value) })}
-      />
-      <Input
-        className="sm:col-span-3"
-        type="number"
-        min={0}
-        placeholder="Min. commande (centimes)"
-        value={form.min_order_amount_cents}
-        onChange={(e) => setForm({ ...form, min_order_amount_cents: Number(e.target.value) })}
-      />
-      <Input
-        className="sm:col-span-3"
-        type="number"
-        min={1}
-        placeholder="Plafond d'utilisations (vide = illimité)"
-        value={form.max_redemptions ?? ''}
-        onChange={(e) => setForm({ ...form, max_redemptions: e.target.value ? Number(e.target.value) : null })}
-      />
-      <label className="flex items-center gap-2 text-sm font-semibold text-neutral-600 sm:col-span-12">
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Code</span>
+        <Input
+          placeholder="ex. WELCOME10"
+          required
+          autoFocus={!promo}
+          disabled={!!promo}
+          value={form.code}
+          onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Remise (%)</span>
+        <Input
+          type="number"
+          min={1}
+          max={100}
+          required
+          value={form.percent_off}
+          onChange={(e) => setForm({ ...form, percent_off: Number(e.target.value) })}
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Commande minimale (centimes)</span>
+        <Input
+          type="number"
+          min={0}
+          value={form.min_order_amount_cents}
+          onChange={(e) => setForm({ ...form, min_order_amount_cents: Number(e.target.value) })}
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Plafond d'utilisations</span>
+        <Input
+          type="number"
+          min={1}
+          placeholder="vide = illimité"
+          value={form.max_redemptions ?? ''}
+          onChange={(e) => setForm({ ...form, max_redemptions: e.target.value ? Number(e.target.value) : null })}
+        />
+      </label>
+      <label className="flex items-center gap-2 text-sm font-semibold text-neutral-600 sm:col-span-2">
         <input
           type="checkbox"
           checked={form.is_active}
           onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
         />
-        Actif
+        Code actif
       </label>
       {error && (
-        <p className="sm:col-span-12 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
           {(error as Error).message}
         </p>
       )}
-      <div className="flex gap-2 sm:col-span-12">
+      <div className="flex gap-2 sm:col-span-2">
         <Button type="submit" disabled={pending}>
           {pending ? 'Enregistrement…' : promo ? 'Enregistrer' : 'Créer le code promo'}
         </Button>
