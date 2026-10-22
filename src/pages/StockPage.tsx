@@ -277,18 +277,24 @@ function EditStockForm({ item, onClose }: { item: StockItem; onClose: () => void
   const apiError = (update.error ?? remove.error) as Error | null;
   const error = formError ?? (apiError ? stockErrorMessage(apiError) : null);
 
+  // A locked article keeps its current name, unit and quantity: the form's copy
+  // may be stale (e.g. a stock movement was registered after it was opened).
+  const shown = locked
+    ? { name: item.name, unit: item.unit, quantityOnHand: String(item.quantityOnHand) }
+    : { name: form.name, unit: form.unit, quantityOnHand: form.quantityOnHand };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const invalid = validateStockForm(form);
+    const invalid = validateStockForm({ ...form, ...shown });
     setFormError(invalid);
     if (invalid) return;
     update.mutate(
       {
         id: item.id,
         payload: {
-          name: form.name,
-          unit: form.unit,
-          quantityOnHand: Number(form.quantityOnHand),
+          name: shown.name,
+          unit: shown.unit,
+          quantityOnHand: Number(shown.quantityOnHand),
           thresholdMin: Number(form.thresholdMin),
           thresholdMax: Number(form.thresholdMax),
         },
@@ -318,11 +324,11 @@ function EditStockForm({ item, onClose }: { item: StockItem; onClose: () => void
       <div className="grid gap-3 sm:grid-cols-5">
         <label className="block sm:col-span-2">
           <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Nom</span>
-          <Input required disabled={locked} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input required disabled={locked} value={shown.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </label>
         <label className="block">
           <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Unité</span>
-          <Input required disabled={locked} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+          <Input required disabled={locked} value={shown.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
         </label>
         <label className="block">
           <span className="mb-1.5 block text-xs font-semibold text-neutral-600">Quantité</span>
@@ -332,7 +338,7 @@ function EditStockForm({ item, onClose }: { item: StockItem; onClose: () => void
             step="any"
             required
             disabled={locked}
-            value={form.quantityOnHand}
+            value={shown.quantityOnHand}
             onChange={(e) => setForm({ ...form, quantityOnHand: e.target.value })}
           />
         </label>
