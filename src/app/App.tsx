@@ -1,3 +1,4 @@
+import { WelcomeOverlay } from '../components/WelcomeOverlay';
 import { ChatWidget } from '../features/chat/components/ChatWidget';
 import { AppProviders } from './providers';
 import { AppRouter } from './router';
@@ -8,6 +9,7 @@ export default function App() {
     <AppProviders>
       <AppRouter />
       <ChatWidget />
+      <WelcomeOverlay />
     </AppProviders>
   );
 }

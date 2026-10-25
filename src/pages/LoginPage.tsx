@@ -6,10 +6,8 @@ import { Input } from '../components/Input';
 import { OAuthButtons } from '../features/auth/components/OAuthButtons';
 import { useLogin } from '../features/auth/hooks/useAuth';
 import { decodeJwt } from '../store/authStore';
+import { useWelcomeStore } from '../store/welcomeStore';
 import logo from '../assets/logo.svg';
-
-// Long enough to read as a transition, short enough not to slow anyone down.
-const WELCOME_MS = 1100;
 
 const DEMO_ACCOUNTS = [
   { label: 'Client', email: 'user@example.com', password: 'User1234!' },
@@ -24,7 +22,8 @@ export function LoginPage() {
   const login = useLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [welcome, setWelcome] = useState(false);
+  const welcome = useWelcomeStore((s) => s.phase !== 'idle');
+  const playWelcome = useWelcomeStore((s) => s.play);
 
   const from = (location.state as { from?: string } | null)?.from;
 
@@ -44,9 +43,8 @@ export function LoginPage() {
                 : roles.includes('livreur')
                   ? '/courier'
                   : '/');
-          // A short welcome screen makes the switch feel intentional, not abrupt.
-          setWelcome(true);
-          window.setTimeout(() => navigate(target, { replace: true }), WELCOME_MS);
+          // A welcome screen covers the page change, so nothing pops.
+          playWelcome(() => navigate(target, { replace: true }));
         },
       },
     );
@@ -174,18 +172,6 @@ export function LoginPage() {
           </div>
         </div>
       </div>
-      {welcome && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="welcome-overlay fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-brand text-white"
-        >
-          <img src={logo} alt="" className="welcome-logo h-24 w-24" />
-          <p className="welcome-text font-display text-2xl font-extrabold">
-            Bienvenue chez <span className="text-accent">Good Food</span>
-          </p>
-        </div>
-      )}
     </div>
   );
 }
