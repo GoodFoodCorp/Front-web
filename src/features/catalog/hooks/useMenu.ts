@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { menuApi } from '../api/menuApi';
-import type { MenuItemForm } from '../types/menu.types';
+import { categoryApi, menuApi, menuPlanApi, recipeApi } from '../api/menuApi';
+import type { MenuItemForm, MenuPlanForm, RecipeLine } from '../types/menu.types';
 
-/** Customer: a restaurant's public menu. */
+/** Customer: a restaurant's public menu (dishes). */
 export function useRestaurantMenu(restaurantId: string | undefined) {
   return useQuery({
     queryKey: ['menu', restaurantId],
@@ -20,7 +20,7 @@ export function useMenuItemsByIds(ids: string[]) {
   });
 }
 
-/** Franchisee: own restaurant's menu (incl. unavailable items). */
+/** Franchisee: own restaurant's dishes · Admin: the global catalog. */
 export function useMyMenu() {
   return useQuery({ queryKey: ['menu', 'mine'], queryFn: menuApi.listMine });
 }
@@ -46,5 +46,97 @@ export function useDeleteMenuItem() {
   return useMutation({
     mutationFn: (id: string) => menuApi.remove(id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['menu'] }),
+  });
+}
+
+export function useToggleMenuItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => menuApi.toggleAvailability(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['menu'] }),
+  });
+}
+
+/** Customer: a restaurant's public menus ("formules"). */
+export function useRestaurantMenuPlans(restaurantId: string | undefined) {
+  return useQuery({
+    queryKey: ['menu-plans', restaurantId],
+    queryFn: () => menuPlanApi.byRestaurant(restaurantId!),
+    enabled: !!restaurantId,
+  });
+}
+
+/** Franchisee: own restaurant's menus · Admin: the global catalog. */
+export function useMyMenuPlans() {
+  return useQuery({ queryKey: ['menu-plans', 'mine'], queryFn: menuPlanApi.listMine });
+}
+
+export function useCreateMenuPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (form: MenuPlanForm) => menuPlanApi.create(form),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['menu-plans'] }),
+  });
+}
+
+export function useUpdateMenuPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, form }: { id: string; form: MenuPlanForm }) => menuPlanApi.update(id, form),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['menu-plans'] }),
+  });
+}
+
+export function useDeleteMenuPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => menuPlanApi.remove(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['menu-plans'] }),
+  });
+}
+
+export function useToggleMenuPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => menuPlanApi.toggleAvailability(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['menu-plans'] }),
+  });
+}
+
+/** Dish categories — public list, network-wide. */
+export function useCategories() {
+  return useQuery({ queryKey: ['categories'], queryFn: categoryApi.list, staleTime: 60 * 1000 });
+}
+
+export function useCreateCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => categoryApi.create(name),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
+export function useDeleteCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => categoryApi.remove(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
+
+/** Manager: the stock recipe of a dish (only fetched once an id is given). */
+export function useRecipe(itemId: string | undefined) {
+  return useQuery({
+    queryKey: ['recipe', itemId],
+    queryFn: () => recipeApi.get(itemId!),
+    enabled: !!itemId,
+  });
+}
+
+export function useSaveRecipe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, lines }: { itemId: string; lines: RecipeLine[] }) => recipeApi.save(itemId, lines),
+    onSuccess: (_data, { itemId }) => void qc.invalidateQueries({ queryKey: ['recipe', itemId] }),
   });
 }

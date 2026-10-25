@@ -228,7 +228,7 @@ function PopularDishCard({ item, onAdd }: { item: MenuItem; onAdd: () => void })
     <article className="flex flex-col overflow-hidden rounded-2xl border border-brand/10 bg-white transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)]">
       <div
         className="h-40 bg-cover bg-center"
-        style={{ backgroundImage: `url(${dishPhoto(item.name, item.category)})` }}
+        style={{ backgroundImage: `url(${item.imageUrl || dishPhoto(item.name, item.category)})` }}
       />
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">

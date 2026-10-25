@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -21,6 +21,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import { Switch } from '../components/Switch';
 import {
@@ -201,20 +202,7 @@ function AvatarUploader({ profile, fullName }: { profile: UserProfile | undefine
 function PersonalInfoPanel() {
   const { data: profile } = useMyProfile();
   const email = useAuthStore((s) => s.email);
-  const update = useUpdateProfile();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ first_name: '', last_name: '', phone: '', age: null as number | null });
-
-  useEffect(() => {
-    if (profile) {
-      setForm({ first_name: profile.first_name, last_name: profile.last_name, phone: profile.phone, age: profile.age });
-    }
-  }, [profile]);
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    update.mutate(form, { onSuccess: () => setEditing(false) });
-  };
 
   return (
     <div className="rounded-2xl border border-brand/10 bg-white p-6">
@@ -223,68 +211,99 @@ function PersonalInfoPanel() {
           <h2 className="font-display text-lg font-bold text-brand">Informations personnelles</h2>
           <p className="text-sm text-neutral-400">Gérez vos informations de profil</p>
         </div>
-        <Button variant="ghost" onClick={() => setEditing((v) => !v)} className="px-3 py-1.5">
-          <Pencil size={14} /> {editing ? 'Annuler' : 'Modifier'}
+        <Button variant="ghost" onClick={() => setEditing(true)} className="px-3 py-1.5">
+          <Pencil size={14} /> Modifier
         </Button>
       </div>
 
-      <form onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <Field label="Prénom">
-          {editing ? (
-            <Input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
-          ) : (
-            <ReadOnlyValue value={form.first_name} />
-          )}
+          <ReadOnlyValue value={profile?.first_name ?? ''} />
         </Field>
         <Field label="Nom">
-          {editing ? (
-            <Input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
-          ) : (
-            <ReadOnlyValue value={form.last_name} />
-          )}
+          <ReadOnlyValue value={profile?.last_name ?? ''} />
         </Field>
         <Field label="Email" className="sm:col-span-2">
           <ReadOnlyValue value={email ?? ''} />
         </Field>
         <Field label="Téléphone">
-          {editing ? (
-            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          ) : (
-            <ReadOnlyValue value={form.phone} />
-          )}
+          <ReadOnlyValue value={profile?.phone ?? ''} />
         </Field>
         <Field label="Âge">
-          {editing ? (
-            <Input
-              type="number"
-              min="0"
-              max="120"
-              value={form.age ?? ''}
-              onChange={(e) => setForm({ ...form, age: e.target.value ? Number(e.target.value) : null })}
-            />
-          ) : (
-            <ReadOnlyValue value={form.age != null ? String(form.age) : ''} />
-          )}
+          <ReadOnlyValue value={profile?.age != null ? String(profile.age) : ''} />
         </Field>
+      </div>
 
-        {update.isError && (
-          <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-            {(update.error as Error).message}
-          </p>
-        )}
-
-        {editing && (
-          <div className="flex items-center gap-3 sm:col-span-2">
-            <Button type="submit" disabled={update.isPending}>
-              {update.isPending ? 'Enregistrement…' : 'Enregistrer'}
-            </Button>
-            {update.isSuccess && !update.isPending && (
-              <span className="text-sm font-semibold text-brand">Profil mis à jour ✓</span>
-            )}
-          </div>
-        )}
-      </form>
+      {editing && (
+        <Modal title="Modifier mes informations" onClose={() => setEditing(false)} maxWidth="max-w-xl">
+          <PersonalInfoForm profile={profile} email={email ?? ''} onDone={() => setEditing(false)} />
+        </Modal>
+      )}
     </div>
+  );
+}
+
+function PersonalInfoForm({
+  profile,
+  email,
+  onDone,
+}: {
+  profile: UserProfile | undefined;
+  email: string;
+  onDone: () => void;
+}) {
+  const update = useUpdateProfile();
+  const [form, setForm] = useState({
+    first_name: profile?.first_name ?? '',
+    last_name: profile?.last_name ?? '',
+    phone: profile?.phone ?? '',
+    age: profile?.age ?? (null as number | null),
+  });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    update.mutate(form, { onSuccess: onDone });
+  };
+
+  return (
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <Field label="Prénom">
+        <Input autoFocus value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
+      </Field>
+      <Field label="Nom">
+        <Input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
+      </Field>
+      <Field label="Email" className="sm:col-span-2">
+        <ReadOnlyValue value={email} />
+      </Field>
+      <Field label="Téléphone">
+        <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+      </Field>
+      <Field label="Âge">
+        <Input
+          type="number"
+          min="0"
+          max="120"
+          value={form.age ?? ''}
+          onChange={(e) => setForm({ ...form, age: e.target.value ? Number(e.target.value) : null })}
+        />
+      </Field>
+
+      {update.isError && (
+        <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          {(update.error as Error).message}
+        </p>
+      )}
+
+      <div className="flex gap-2 sm:col-span-2">
+        <Button type="submit" disabled={update.isPending}>
+          {update.isPending ? 'Enregistrement…' : 'Enregistrer'}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          Annuler
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -329,39 +348,38 @@ function AddressesPanel() {
           <h2 className="font-display text-lg font-bold text-brand">Mes adresses de livraison</h2>
           <p className="text-sm text-neutral-400">Gérez vos adresses enregistrées</p>
         </div>
-        <Button variant="ghost" onClick={() => setShowForm((v) => !v)} className="px-3 py-1.5">
+        <Button
+          variant="ghost"
+          onClick={() => {
+            add.reset();
+            setShowForm(true);
+          }}
+          className="px-3 py-1.5"
+        >
           <Plus size={16} /> Ajouter
         </Button>
       </div>
 
       {showForm && (
-        <form onSubmit={submit} className="grid gap-3 rounded-xl bg-neutral-50 p-4 sm:grid-cols-6">
-          <Input
-            className="sm:col-span-2"
-            placeholder="Libellé (Domicile…)"
-            value={form.label}
-            onChange={(e) => setForm({ ...form, label: e.target.value })}
-          />
-          <Input
-            className="sm:col-span-4"
-            placeholder="Rue"
-            required
-            value={form.street}
-            onChange={(e) => setForm({ ...form, street: e.target.value })}
-          />
-          <Input
-            className="sm:col-span-2"
-            placeholder="Code postal"
-            value={form.zip_code}
-            onChange={(e) => setForm({ ...form, zip_code: e.target.value })}
-          />
-          <Input
-            className="sm:col-span-4"
-            placeholder="Ville"
-            required
-            value={form.city}
-            onChange={(e) => setForm({ ...form, city: e.target.value })}
-          />
+        <Modal title="Nouvelle adresse" onClose={() => setShowForm(false)} maxWidth="max-w-xl">
+        <form onSubmit={submit} className="grid gap-4 sm:grid-cols-6">
+          <Field label="Libellé" className="sm:col-span-2">
+            <Input
+              autoFocus
+              placeholder="Domicile…"
+              value={form.label}
+              onChange={(e) => setForm({ ...form, label: e.target.value })}
+            />
+          </Field>
+          <Field label="Rue" className="sm:col-span-4">
+            <Input required value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
+          </Field>
+          <Field label="Code postal" className="sm:col-span-2">
+            <Input value={form.zip_code} onChange={(e) => setForm({ ...form, zip_code: e.target.value })} />
+          </Field>
+          <Field label="Ville" className="sm:col-span-4">
+            <Input required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+          </Field>
           <label className="sm:col-span-6 flex items-center gap-2 text-sm font-semibold text-neutral-600">
             <input
               type="checkbox"
@@ -384,6 +402,7 @@ function AddressesPanel() {
             </Button>
           </div>
         </form>
+        </Modal>
       )}
 
       {isLoading ? (
@@ -466,46 +485,58 @@ function PaymentsPanel() {
               Mode démonstration — aucune carte réelle n'est traitée ni transmise à un processeur.
             </p>
           </div>
-          <Button variant="ghost" onClick={() => setShowForm((v) => !v)} className="px-3 py-1.5">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              addMethod.reset();
+              setShowForm(true);
+            }}
+            className="px-3 py-1.5"
+          >
             <Plus size={16} /> Ajouter une carte
           </Button>
         </div>
 
         {showForm && (
-          <form onSubmit={submit} className="grid gap-3 rounded-xl bg-neutral-50 p-4 sm:grid-cols-6">
-            <Input
-              className="sm:col-span-6"
-              placeholder="Nom du titulaire"
-              required
-              value={form.cardholder_name}
-              onChange={(e) => setForm({ ...form, cardholder_name: e.target.value })}
-            />
-            <Input
-              className="sm:col-span-3"
-              placeholder="Numéro de carte (ex. 4242 4242 4242 4242)"
-              required
-              value={form.card_number}
-              onChange={(e) => setForm({ ...form, card_number: e.target.value })}
-            />
-            <Input
-              className="sm:col-span-1"
-              type="number"
-              placeholder="MM"
-              min="1"
-              max="12"
-              required
-              value={form.exp_month}
-              onChange={(e) => setForm({ ...form, exp_month: e.target.value })}
-            />
-            <Input
-              className="sm:col-span-2"
-              type="number"
-              placeholder="AAAA"
-              min="2024"
-              required
-              value={form.exp_year}
-              onChange={(e) => setForm({ ...form, exp_year: e.target.value })}
-            />
+          <Modal title="Ajouter une carte" onClose={() => setShowForm(false)} maxWidth="max-w-xl">
+          <form onSubmit={submit} className="grid gap-4 sm:grid-cols-6">
+            <Field label="Nom du titulaire" className="sm:col-span-6">
+              <Input
+                autoFocus
+                required
+                value={form.cardholder_name}
+                onChange={(e) => setForm({ ...form, cardholder_name: e.target.value })}
+              />
+            </Field>
+            <Field label="Numéro de carte" className="sm:col-span-3">
+              <Input
+                placeholder="4242 4242 4242 4242"
+                required
+                value={form.card_number}
+                onChange={(e) => setForm({ ...form, card_number: e.target.value })}
+              />
+            </Field>
+            <Field label="Mois" className="sm:col-span-1">
+              <Input
+                type="number"
+                placeholder="MM"
+                min="1"
+                max="12"
+                required
+                value={form.exp_month}
+                onChange={(e) => setForm({ ...form, exp_month: e.target.value })}
+              />
+            </Field>
+            <Field label="Année" className="sm:col-span-2">
+              <Input
+                type="number"
+                placeholder="AAAA"
+                min="2024"
+                required
+                value={form.exp_year}
+                onChange={(e) => setForm({ ...form, exp_year: e.target.value })}
+              />
+            </Field>
             <label className="sm:col-span-6 flex items-center gap-2 text-sm font-semibold text-neutral-600">
               <input
                 type="checkbox"
@@ -528,6 +559,7 @@ function PaymentsPanel() {
               </Button>
             </div>
           </form>
+          </Modal>
         )}
 
         {methodsLoading ? (

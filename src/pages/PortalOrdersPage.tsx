@@ -4,6 +4,8 @@ import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { OrderStatusBadge } from '../features/orders/components/OrderStatusBadge';
 import { useRestaurantOrders, useUpdateOrderStatus } from '../features/orders/hooks/useOrders';
+import { DeliveryStatusBadge } from '../features/delivery/components/DeliveryStatusBadge';
+import { useOrderDelivery } from '../features/delivery/hooks/useDelivery';
 import { useAuthStore } from '../store/authStore';
 import { formatPrice } from '../utils/format';
 import type { Order, OrderStatus } from '../features/orders/types/order.types';
@@ -40,9 +42,13 @@ export function PortalOrdersPage() {
   );
 }
 
+// Once the kitchen is done, the delivery-service owns the story (courier assigned, picked up, delivered).
+const DELIVERY_TRACKED: OrderStatus[] = ['READY_FOR_PICKUP', 'IN_DELIVERY', 'DELIVERED'];
+
 function OrderRow({ order }: { order: Order }) {
   const update = useUpdateOrderStatus();
   const next = NEXT[order.status];
+  const { data: deliveryDetail } = useOrderDelivery(order.id, DELIVERY_TRACKED.includes(order.status));
 
   return (
     <Card className="flex flex-wrap items-center gap-4">
@@ -50,6 +56,7 @@ function OrderRow({ order }: { order: Order }) {
         <div className="flex items-center gap-3">
           <span className="font-display font-bold text-brand">#{order.id.slice(0, 8)}</span>
           <OrderStatusBadge status={order.status} />
+          {deliveryDetail && <DeliveryStatusBadge status={deliveryDetail.delivery.status} />}
         </div>
         <p className="mt-1 text-sm text-neutral-500">
           {order.items.map((i) => `${i.quantity}× ${i.menu_item_name}`).join(', ')}

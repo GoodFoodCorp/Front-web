@@ -91,18 +91,16 @@ Le portail n'est accessible qu'aux comptes ayant le rôle `manager` (garde de ro
 
 ## Routage réseau
 
-Le SPA n'appelle **que sa propre origine** — aucun CORS. Le routage vers les
-services est assuré par :
+Le front appelle la base API définie par `VITE_API_BASE_URL`. En production,
+la valeur par défaut pointe vers `https://api.c-mbk.fr`. En développement, le
+front conserve l'origine courante et passe par le proxy Vite pour rejoindre les
+services locaux.
 
-- **nginx** (`nginx.conf`) en production / conteneur
-- le **proxy Vite** (`vite.config.ts`) en développement
-
-Les deux configurations sont volontairement **le miroir l'une de l'autre**, et
-préfigurent l'Ingress Kubernetes cible :
+Les routes backend suivent les préfixes ci-dessous :
 
 | Chemin | Service |
 |---|---|
-| `/api/auth`, `/api/user/`, `/api/admin` | auth-service (8081) |
+| `/api/auth`, `/api/user/`, `/api/admin`, `/api-docs`, `/scalar`, `/health` | auth-service (8081) |
 | `/api/users` | user-service (8087) |
 | `/api/restaurants`, `/api/franchise` | franchise-service (8089) |
 | `/api/menu` | menu-service (8085) |
@@ -112,8 +110,20 @@ préfigurent l'Ingress Kubernetes cible :
 | `/api/reservations` | reservation-service (8088) |
 
 > ⚠️ **Attention** : `/api/user` (auth) est un préfixe de `/api/users`
-> (user-service). nginx utilise `location ^~ /api/users` et Vite la clé
-> `/api/user/` pour éviter que les profils partent vers le mauvais service.
+> (user-service). Les proxies locaux doivent garder cette priorité pour éviter
+> que les profils partent vers le mauvais service.
+
+### Configuration locale
+
+Crée un fichier `.env.local` si tu veux forcer une autre base API pendant le
+développement :
+
+```bash
+VITE_API_BASE_URL=http://localhost:3000
+```
+
+Si tu lances le front en conteneur ou derrière un reverse proxy local, adapte la
+valeur à l'URL exposée par ton gateway.
 
 ---
 
