@@ -20,6 +20,14 @@ export interface OrderProposal {
   payment_method?: string;
 }
 
+/** A restaurant the customer can pick with one click when the assistant asks
+ *  which restaurant to order from (no restaurant page is open). */
+export interface RestaurantChoice {
+  id: string;
+  name: string;
+  city?: string;
+}
+
 export type ProposalStatus = 'pending' | 'confirmed' | 'cancelled';
 
 export interface ChatMessage {
@@ -28,6 +36,11 @@ export interface ChatMessage {
   content: string;
   proposal?: OrderProposal;
   proposalStatus?: ProposalStatus;
+  choices?: RestaurantChoice[];
+  /** Written by the interface itself (order confirmed, error…), not by the
+   *  assistant: shown to the customer but never sent back to the model, which
+   *  would otherwise copy it. */
+  ui?: boolean;
 }
 
 export interface SendMessagePayload {
@@ -39,4 +52,5 @@ export interface SendMessageResponse {
   role: 'assistant';
   content: string;
   proposal?: OrderProposal;
+  choices?: RestaurantChoice[];
 }

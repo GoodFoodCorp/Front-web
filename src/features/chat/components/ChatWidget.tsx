@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, RotateCcw, Send, X } from 'lucide-react';
+import { MessageCircle, RotateCcw, Send, Store, X } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { useAuthStore } from '../../../store/authStore';
@@ -7,7 +7,7 @@ import { useChatStore } from '../../../store/chatStore';
 import { useCheckout } from '../../orders/hooks/useOrders';
 import { formatPrice } from '../../../utils/format';
 import { useChat } from '../hooks/useChat';
-import type { ChatMessage } from '../types/chat.types';
+import type { ChatMessage, RestaurantChoice } from '../types/chat.types';
 
 const GREETING = "Bonjour ! Je suis l'assistant Good Food. Posez-moi une question sur votre commande, un menu, ou le service — je suis là pour vous aider.";
 
@@ -88,10 +88,15 @@ export function ChatWidget() {
 
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
             <ChatBubble role="assistant" content={GREETING} />
-            {messages.map((m) => (
+            {messages.map((m, i) => (
               <div key={m.id}>
                 <ChatBubble role={m.role} content={m.content} />
                 {m.proposal && m.proposalStatus === 'pending' && <OrderProposalCard message={m} />}
+                {/* Only the latest question is still open: older buttons would
+                    answer something the conversation already moved past. */}
+                {m.choices && m.choices.length > 0 && i === messages.length - 1 && (
+                  <RestaurantChoices choices={m.choices} disabled={isPending} onPick={sendMessage} />
+                )}
               </div>
             ))}
             {isPending && <TypingIndicator />}
@@ -151,12 +156,14 @@ function OrderProposalCard({ message }: { message: ChatMessage }) {
           addMessage({
             role: 'assistant',
             content: `Commande passée avec succès ! Numéro de commande #${order.id.slice(0, 8)}.`,
+            ui: true,
           });
         },
         onError: () => {
           addMessage({
             role: 'assistant',
             content: "Désolé, la commande n'a pas pu être passée. Réessayez depuis le panier ou dans un instant.",
+            ui: true,
           });
         },
       },
@@ -165,7 +172,7 @@ function OrderProposalCard({ message }: { message: ChatMessage }) {
 
   const cancel = () => {
     setProposalStatus(message.id, 'cancelled');
-    addMessage({ role: 'assistant', content: "D'accord, commande annulée." });
+    addMessage({ role: 'assistant', content: "D'accord, commande annulée.", ui: true });
   };
 
   return (
@@ -199,6 +206,39 @@ function OrderProposalCard({ message }: { message: ChatMessage }) {
           Annuler
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** One-click answers to "which restaurant?". Picking one just sends its name as
+ *  the customer's message, so the conversation (and the server-side check that
+ *  the *customer* named the restaurant) works exactly as if they had typed it. */
+function RestaurantChoices({
+  choices,
+  disabled,
+  onPick,
+}: {
+  choices: RestaurantChoice[];
+  disabled: boolean;
+  onPick: (name: string) => void;
+}) {
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-2" role="group" aria-label="Choisir un restaurant">
+      {choices.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          disabled={disabled}
+          onClick={() => onPick(c.name)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-brand/25 bg-white px-3 py-1.5 text-xs font-semibold text-brand transition hover:bg-brand-pale active:scale-95 disabled:opacity-50"
+        >
+          <Store size={13} aria-hidden />
+          <span>
+            {c.name}
+            {c.city ? <span className="font-normal text-neutral-500"> · {c.city}</span> : null}
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

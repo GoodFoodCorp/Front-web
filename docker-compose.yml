@@ -1,6 +1,10 @@
 services:
   web-app:
-    build: .
+    build:
+      context: .
+      args:
+        # Same origin as the page: nginx proxies /api/* to the services (no CORS).
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
     container_name: web-app
     restart: unless-stopped
     ports:
