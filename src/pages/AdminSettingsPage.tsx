@@ -5,6 +5,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
 import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
+import { AiSettingsSection } from '../features/chat/components/AiSettingsSection';
 import { useCategories, useCreateCategory, useDeleteCategory } from '../features/catalog/hooks/useMenu';
 
 export function AdminSettingsPage() {
@@ -16,6 +17,7 @@ export function AdminSettingsPage() {
       </div>
 
       <CategoriesSection />
+      <AiSettingsSection />
     </div>
   );
 }
