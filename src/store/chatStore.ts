@@ -5,11 +5,15 @@ import type { ChatMessage, ProposalStatus } from '../features/chat/types/chat.ty
 interface ChatState {
   isOpen: boolean;
   messages: ChatMessage[];
+  /** Who the stored conversation belongs to (null: nobody is signed in). */
+  ownerId: string | null;
   toggle: () => void;
   close: () => void;
   addMessage: (message: Omit<ChatMessage, 'id'>) => void;
   setProposalStatus: (id: string, status: ProposalStatus) => void;
   reset: () => void;
+  /** Wipes the conversation when the signed-in user is not the one it belongs to. */
+  claimFor: (userId: string | null) => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -17,6 +21,7 @@ export const useChatStore = create<ChatState>()(
     (set) => ({
       isOpen: false,
       messages: [],
+      ownerId: null,
       toggle: () => set((state) => ({ isOpen: !state.isOpen })),
       close: () => set({ isOpen: false }),
       addMessage: (message) =>
@@ -26,6 +31,8 @@ export const useChatStore = create<ChatState>()(
           messages: state.messages.map((m) => (m.id === id ? { ...m, proposalStatus: status } : m)),
         })),
       reset: () => set({ messages: [] }),
+      claimFor: (userId) =>
+        set((state) => (state.ownerId === userId ? state : { ownerId: userId, messages: [], isOpen: false })),
     }),
     { name: 'goodfood.chat' },
   ),

@@ -15,6 +15,13 @@ const GREETING = "Bonjour ! Je suis l'assistant Good Food. Posez-moi une questio
  *  customers: the assistant's value is answering about *their* orders. */
 export function ChatWidget() {
   const isLoggedIn = !!useAuthStore((s) => s.accessToken);
+  const userId = useAuthStore((s) => s.userId);
+  const claimFor = useChatStore((s) => s.claimFor);
+  // A conversation is private to the account that had it: switching account (or
+  // signing out) must never show the previous person's messages.
+  useEffect(() => {
+    claimFor(isLoggedIn ? userId : null);
+  }, [isLoggedIn, userId, claimFor]);
   const isOpen = useChatStore((s) => s.isOpen);
   const toggle = useChatStore((s) => s.toggle);
   const reset = useChatStore((s) => s.reset);

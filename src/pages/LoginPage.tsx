@@ -42,29 +42,9 @@ export function LoginPage() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      {/* Brand panel */}
-      <div className="brand-texture relative hidden flex-col justify-between bg-brand p-12 text-white lg:flex">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Good Food" className="h-14 w-14" />
-          <span className="font-display text-2xl font-extrabold">Good Food</span>
-        </div>
-        <div>
-          <h1 className="font-display text-5xl font-extrabold leading-tight">
-            Les repas de qualité,
-            <br />
-            <span className="text-accent">à côté de chez vous.</span>
-          </h1>
-          <p className="mt-4 max-w-md text-white/70">
-            Commandez en ligne depuis votre restaurant Good Food préféré, ou gérez votre franchise
-            depuis le portail dédié.
-          </p>
-        </div>
-        <p className="text-sm text-white/40">© {new Date().getFullYear()} Good Food 3.0</p>
-      </div>
-
+    <div className="min-h-screen">
       {/* Form panel */}
-      <div className="flex items-center justify-center bg-cream p-6">
+      <div className="flex min-h-screen items-center justify-center bg-cream p-6">
         <div className="w-full max-w-sm animate-[rise_0.5s]">
           <Link
             to="/"
@@ -73,7 +53,7 @@ export function LoginPage() {
             <ArrowLeft size={16} /> Retour au site
           </Link>
 
-          <div className="mb-8 flex items-center gap-2 lg:hidden">
+          <div className="mb-8 flex items-center gap-2">
             <img src={logo} alt="Good Food" className="h-11 w-11" />
             <span className="font-display text-xl font-extrabold text-brand">Good Food</span>
           </div>
