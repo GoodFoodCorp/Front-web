@@ -3,11 +3,38 @@ import { ArrowLeft, CheckCircle2, MapPin, Truck } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Spinner } from '../components/Spinner';
 import { OrderStatusBadge } from '../features/orders/components/OrderStatusBadge';
-import { useOrder } from '../features/orders/hooks/useOrders';
+import { useCancelOrder, useOrder } from '../features/orders/hooks/useOrders';
 import type { OrderStatus } from '../features/orders/types/order.types';
+import { Button } from '../components/Button';
 import { DeliveryStatusBadge } from '../features/delivery/components/DeliveryStatusBadge';
-import { useOrderDelivery } from '../features/delivery/hooks/useDelivery';
+import { useOrderDelivery, useRateDelivery } from '../features/delivery/hooks/useDelivery';
 import { formatPrice } from '../utils/format';
+
+/** The customer may cancel until the kitchen starts cooking. */
+const CANCELLABLE: OrderStatus[] = ['PLACED', 'PAYMENT_PENDING', 'CONFIRMED'];
+
+function RateDelivery({ deliveryId, rating }: { deliveryId: string; rating: number | null }) {
+  const rate = useRateDelivery();
+  if (rating || rate.isSuccess) {
+    return <p className="text-sm text-neutral-500">Merci pour votre note ({rating ?? rate.data?.rating}/5).</p>;
+  }
+  return (
+    <div className="flex items-center gap-1 text-sm text-neutral-600">
+      Noter la livraison :
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          disabled={rate.isPending}
+          onClick={() => rate.mutate({ id: deliveryId, rating: n, comment: '' })}
+          className="text-xl text-amber-400 hover:scale-110"
+          aria-label={`${n} étoile${n > 1 ? 's' : ''}`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const TIMELINE: OrderStatus[] = [
   'CONFIRMED',
@@ -29,6 +56,7 @@ export function OrderDetailPage() {
   const { id } = useParams();
   const location = useLocation();
   const { data: order, isLoading } = useOrder(id);
+  const cancel = useCancelOrder();
   const justPaid = (location.state as { justPaid?: boolean } | null)?.justPaid;
   const { data: deliveryDetail } = useOrderDelivery(order?.id, !!order && order.status !== 'CANCELLED');
 
@@ -106,6 +134,14 @@ export function OrderDetailPage() {
             <DeliveryStatusBadge status={delivery.status} />
           </div>
 
+          {deliveryDetail?.handoverCode && delivery.status !== 'DELIVERED' && delivery.status !== 'CANCELLED' && (
+            <div className="rounded-xl bg-brand-pale px-4 py-3 text-sm text-brand">
+              Code à donner au livreur :{' '}
+              <span className="font-display text-xl font-extrabold tracking-widest">{deliveryDetail.handoverCode}</span>
+            </div>
+          )}
+          {delivery.status === 'DELIVERED' && <RateDelivery deliveryId={delivery._id} rating={delivery.rating ?? null} />}
+
           {delivery.status === 'DELIVERED' && delivery.deliveredAt ? (
             <p className="text-sm text-neutral-500">
               Livrée le {new Date(delivery.deliveredAt).toLocaleString('fr-FR')}
@@ -128,7 +164,7 @@ export function OrderDetailPage() {
       <Card className="space-y-3">
         <div className="flex items-start gap-2 text-sm text-neutral-600">
           <MapPin size={16} className="mt-0.5 shrink-0 text-brand" />
-          <span>{order.delivery_address}</span>
+          <span>{order.fulfillment === 'PICKUP' ? 'À retirer au restaurant' : order.delivery_address}</span>
         </div>
         <div className="border-t border-brand/10 pt-3">
           {order.items.map((item) => (
@@ -153,11 +189,32 @@ export function OrderDetailPage() {
               <span>−{formatPrice(order.discount_cents)}</span>
             </div>
           )}
+          {!!order.delivery_fee_cents && (
+            <div className="flex items-center justify-between text-neutral-500">
+              <span>Frais de livraison</span>
+              <span>{formatPrice(order.delivery_fee_cents)}</span>
+            </div>
+          )}
+          {!!order.tip_cents && (
+            <div className="flex items-center justify-between text-neutral-500">
+              <span>Pourboire</span>
+              <span>{formatPrice(order.tip_cents)}</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between border-t border-brand/10 pt-3 font-display text-lg font-extrabold text-brand">
           <span>Total</span>
           <span>{formatPrice(order.amount_due_cents)}</span>
         </div>
+        {CANCELLABLE.includes(order.status) && (
+          <div className="border-t border-brand/10 pt-3">
+            <Button variant="ghost" disabled={cancel.isPending} onClick={() => cancel.mutate(order.id)}>
+              Annuler la commande
+            </Button>
+            {cancel.isError && <p className="mt-2 text-sm text-red-600">{(cancel.error as Error).message}</p>}
+            <p className="mt-1 text-xs text-neutral-400">Une commande payée est remboursée.</p>
+          </div>
+        )}
       </Card>
     </div>
   );

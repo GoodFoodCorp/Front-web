@@ -21,8 +21,10 @@ export interface ReservationForm {
   notes?: string;
 }
 
-/** Whether a given service hour is already fully booked. */
+/** Remaining covers of a slot (HH:mm, restaurant local time). */
 export interface HourAvailability {
+  time: string;
   hour: number;
   full: boolean;
+  remainingCovers: number;
 }

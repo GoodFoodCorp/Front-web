@@ -43,7 +43,24 @@ export function usePickupDelivery() {
 export function useDropoffDelivery() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deliveryApi.dropoff(id),
+    mutationFn: ({ id, code }: { id: string; code: string }) => deliveryApi.dropoff(id, code),
+    onSuccess: () => invalidateDeliveries(qc),
+  });
+}
+
+export function useReleaseDelivery() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deliveryApi.release(id),
+    onSuccess: () => invalidateDeliveries(qc),
+  });
+}
+
+export function useRateDelivery() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, rating, comment }: { id: string; rating: number; comment: string }) =>
+      deliveryApi.rate(id, rating, comment),
     onSuccess: () => invalidateDeliveries(qc),
   });
 }

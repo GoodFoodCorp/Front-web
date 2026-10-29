@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, LogOut, PackageCheck, Truck } from 'lucide-react';
 import { Button } from '../components/Button';
@@ -10,10 +11,11 @@ import {
   useAcceptDelivery,
   useAvailableDeliveries,
   useDropoffDelivery,
+  useReleaseDelivery,
   useMyDeliveries,
   usePickupDelivery,
 } from '../features/delivery/hooks/useDelivery';
-import type { Delivery } from '../features/delivery/types/delivery.types';
+import type { AvailableDelivery, Delivery } from '../features/delivery/types/delivery.types';
 import { formatPrice } from '../utils/format';
 import logo from '../assets/logo.svg';
 
@@ -77,7 +79,7 @@ export function CourierPage() {
           ) : (
             <div className="space-y-3">
               {available.map((delivery) => (
-                <AvailableDeliveryCard key={delivery._id} delivery={delivery} />
+                <AvailableDeliveryCard key={delivery.id} delivery={delivery} />
               ))}
             </div>
           )}
@@ -106,19 +108,22 @@ function Route({ delivery }: { delivery: Delivery }) {
   );
 }
 
-function AvailableDeliveryCard({ delivery }: { delivery: Delivery }) {
+function AvailableDeliveryCard({ delivery }: { delivery: AvailableDelivery }) {
   const accept = useAcceptDelivery();
 
   return (
     <Card className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <p className="font-display font-bold text-brand">Commande #{delivery.orderId.slice(0, 8)}</p>
-        {delivery.courierFeeCents != null && (
-          <span className="font-display font-extrabold text-brand">{formatPrice(delivery.courierFeeCents)}</span>
-        )}
+        <span className="font-display font-extrabold text-brand">
+          {formatPrice(delivery.courierFeeCents + delivery.tipCents)}
+        </span>
       </div>
-      <Route delivery={delivery} />
-      <Button disabled={accept.isPending} onClick={() => accept.mutate(delivery._id)}>
+      <p className="text-sm text-neutral-600">
+        Retrait : {delivery.pickup.address} · {delivery.distanceKm} km jusqu'au client
+        {delivery.tipCents > 0 && ` · pourboire ${formatPrice(delivery.tipCents)}`}
+      </p>
+      <Button disabled={accept.isPending} onClick={() => accept.mutate(delivery.id)}>
         <CheckCircle2 size={16} /> Accepter
       </Button>
       {accept.isError && <p className="text-sm text-red-600">{(accept.error as Error).message}</p>}
@@ -129,7 +134,9 @@ function AvailableDeliveryCard({ delivery }: { delivery: Delivery }) {
 function MyDeliveryCard({ delivery }: { delivery: Delivery }) {
   const pickup = usePickupDelivery();
   const dropoff = useDropoffDelivery();
-  const error = (pickup.error ?? dropoff.error) as Error | null;
+  const release = useReleaseDelivery();
+  const [code, setCode] = useState('');
+  const error = (pickup.error ?? dropoff.error ?? release.error) as Error | null;
 
   return (
     <Card className="space-y-3">
@@ -140,14 +147,31 @@ function MyDeliveryCard({ delivery }: { delivery: Delivery }) {
       <Route delivery={delivery} />
 
       {delivery.status === 'ASSIGNED' && (
-        <Button disabled={pickup.isPending} onClick={() => pickup.mutate(delivery._id)}>
-          <PackageCheck size={16} /> J'ai récupéré la commande
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button disabled={pickup.isPending} onClick={() => pickup.mutate(delivery._id)}>
+            <PackageCheck size={16} /> J'ai récupéré la commande
+          </Button>
+          <Button variant="ghost" disabled={release.isPending} onClick={() => release.mutate(delivery._id)}>
+            Libérer la course
+          </Button>
+        </div>
       )}
       {(delivery.status === 'PICKED_UP' || delivery.status === 'IN_TRANSIT') && (
-        <Button disabled={dropoff.isPending} onClick={() => dropoff.mutate(delivery._id)}>
-          <Truck size={16} /> Commande livrée
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            inputMode="numeric"
+            placeholder="Code client"
+            className="w-32 rounded-xl border border-brand/15 px-3 py-2 text-sm outline-none focus:border-brand"
+          />
+          <Button
+            disabled={dropoff.isPending || code.length !== 4}
+            onClick={() => dropoff.mutate({ id: delivery._id, code })}
+          >
+            <Truck size={16} /> Commande livrée
+          </Button>
+        </div>
       )}
       {error && <p className="text-sm text-red-600">{error.message}</p>}
     </Card>

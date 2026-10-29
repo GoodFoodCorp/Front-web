@@ -62,3 +62,11 @@ export function useSetOrderIntake() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['restaurants'] }),
   });
 }
+
+export function useRestaurant(id: string | undefined) {
+  return useQuery({
+    queryKey: ['restaurants', id],
+    queryFn: () => restaurantsApi.get(id as string),
+    enabled: !!id,
+  });
+}
