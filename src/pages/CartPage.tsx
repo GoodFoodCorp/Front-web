@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, Minus, MapPin, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
@@ -7,13 +7,25 @@ import { formatPrice } from '../utils/format';
 import { useCartStore } from '../store/cartStore';
 import { selectIsLoggedIn, useAuthStore } from '../store/authStore';
 import { useCheckout } from '../features/orders/hooks/useOrders';
+import type { Fulfillment } from '../features/orders/types/order.types';
+import { usePaymentMethods } from '../features/payments/hooks/usePayments';
+import { useDeliveryQuote } from '../features/restaurants/hooks/useRestaurants';
+import { stripeEnabled } from '../services/stripe';
 import { useMyAddresses } from '../features/profile/hooks/useProfile';
 import { usePreviewPromoCode } from '../features/promos/hooks/usePromos';
 import { ApiError } from '../services/http';
 import { dishPhoto } from '../utils/images';
 
-const FREE_DELIVERY_THRESHOLD_CENTS = 3000;
-const DELIVERY_FEE_CENTS = 399;
+/** Tip suggestions, in cents. */
+const TIP_CHOICES = [0, 100, 200, 300, 500];
+
+const REFUSALS: Record<string, string> = {
+  CLOSED: 'Le restaurant est fermé pour le moment.',
+  PAUSED: 'Le restaurant ne prend plus de commandes pour le moment.',
+  OUTOFZONE: 'Cette adresse est hors de la zone de livraison.',
+  UNKNOWNADDRESS: 'Adresse introuvable, vérifiez-la.',
+  INACTIVE: "Ce restaurant n'est plus disponible.",
+};
 
 export function CartPage() {
   const navigate = useNavigate();
@@ -28,13 +40,30 @@ export function CartPage() {
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [manualAddress, setManualAddress] = useState('');
+  const [fulfillment, setFulfillment] = useState<Fulfillment>('DELIVERY');
+  const [tipCents, setTipCents] = useState(0);
+  const [cardId, setCardId] = useState<string | null>(null);
+  // One key per checkout attempt: a double click or a retry never places two orders.
+  const idempotencyKey = useRef(crypto.randomUUID());
+
+  const { data: cards } = usePaymentMethods();
+  const selectedCard = cards?.find((c) => c.id === cardId) ?? cards?.find((c) => c.isDefault) ?? cards?.[0];
+
+  const address = defaultAddress?.full_address ?? manualAddress;
+  const isPickup = fulfillment === 'PICKUP';
+  const { data: quote } = useDeliveryQuote(
+    restaurantId,
+    isPickup ? '' : address,
+    isLoggedIn && (isPickup || address.trim().length > 3),
+  );
 
   const subtotal = totalCents();
   const discount = appliedPromo ? Math.floor((subtotal * appliedPromo.percentOff) / 100) : 0;
-  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD_CENTS ? 0 : DELIVERY_FEE_CENTS;
-  const total = Math.max(0, subtotal - discount) + deliveryFee;
-
-  const address = defaultAddress?.full_address ?? manualAddress;
+  // The server computes the amount charged; this mirrors it for display.
+  const deliveryFee = isPickup ? 0 : (quote?.deliveryFeeCents ?? 0);
+  const total = Math.max(0, subtotal - discount) + deliveryFee + tipCents;
+  const belowMinimum = !isPickup && !!quote && subtotal - discount < quote.minimumOrderCents;
+  const refusal = quote && !quote.canOrder ? (REFUSALS[quote.refusal ?? ''] ?? REFUSALS.INACTIVE) : null;
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
@@ -62,17 +91,28 @@ export function CartPage() {
     if (!restaurantId) return;
     checkout.mutate(
       {
-        restaurant_id: restaurantId,
-        delivery_address: address,
-        items: lines.map((l) => ({
-          menu_item_id: l.item.id,
-          menu_item_name: l.item.name,
-          quantity: l.quantity,
-          unit_price_cents: l.item.priceCents,
-        })),
-        promo_code: appliedPromo?.code,
+        order: {
+          restaurant_id: restaurantId,
+          delivery_address: isPickup ? '' : address,
+          items: lines.map((l) => ({
+            menu_item_id: l.item.id,
+            menu_item_name: l.item.name,
+            quantity: l.quantity,
+            unit_price_cents: l.item.priceCents,
+          })),
+          promo_code: appliedPromo?.code,
+          fulfillment,
+          tip_cents: tipCents,
+        },
+        paymentMethodId: selectedCard?.id,
+        idempotencyKey: idempotencyKey.current,
       },
-      { onSuccess: (order) => navigate(`/orders/${order.id}`, { state: { justPaid: true } }) },
+      {
+        onSuccess: (order) => {
+          idempotencyKey.current = crypto.randomUUID();
+          navigate(`/orders/${order.id}`, { state: { justPaid: true } });
+        },
+      },
     );
   };
 
@@ -87,7 +127,10 @@ export function CartPage() {
     );
   }
 
-  const canOrder = address.trim().length > 3 && !checkout.isPending;
+  const needsCard = stripeEnabled && !selectedCard;
+  const canOrder =
+    (isPickup || address.trim().length > 3) && !refusal && !belowMinimum && !needsCard && !checkout.isPending;
+  const eta = quote ? `${quote.estimatedDeliveryMinutes} min` : '30-40 min';
 
   return (
     <div>
@@ -168,7 +211,18 @@ export function CartPage() {
             <div className="rounded-2xl border border-brand/10 bg-white p-5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-brand">
-                  <MapPin size={16} /> Adresse de livraison
+                  <MapPin size={16} /> {isPickup ? 'Retrait au restaurant' : 'Adresse de livraison'}
+                </div>
+                <div className="flex rounded-lg border border-brand/15 p-0.5 text-xs font-semibold">
+                  {(['DELIVERY', 'PICKUP'] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setFulfillment(f)}
+                      className={`rounded-md px-3 py-1 ${fulfillment === f ? 'bg-brand text-white' : 'text-brand'}`}
+                    >
+                      {f === 'DELIVERY' ? 'Livraison' : 'À emporter'}
+                    </button>
+                  ))}
                 </div>
                 <button
                   onClick={() => navigate('/profile')}
@@ -177,7 +231,11 @@ export function CartPage() {
                   Modifier
                 </button>
               </div>
-              {defaultAddress ? (
+              {isPickup ? (
+                <p className="mt-3 flex items-center gap-1.5 text-sm text-neutral-500">
+                  <Clock size={13} /> À retirer chez {restaurantName} dans environ {quote?.prepTimeMinutes ?? 20} min
+                </p>
+              ) : defaultAddress ? (
                 <div className="mt-3">
                   <p className="font-display font-bold text-brand">{defaultAddress.label}</p>
                   <p className="text-sm text-neutral-500">
@@ -186,7 +244,7 @@ export function CartPage() {
                     {defaultAddress.city}, {defaultAddress.zip_code}
                   </p>
                   <p className="mt-2 flex items-center gap-1.5 text-xs text-neutral-400">
-                    <Clock size={13} /> Livraison estimée : 30-40 min
+                    <Clock size={13} /> Livraison estimée : {eta}
                   </p>
                 </div>
               ) : (
@@ -240,11 +298,28 @@ export function CartPage() {
                     <span>−{formatPrice(discount)}</span>
                   </div>
                 )}
+                {!isPickup && (
+                  <div className="flex items-center justify-between text-neutral-500">
+                    <span>Frais de livraison</span>
+                    <span className={deliveryFee === 0 ? 'text-brand' : ''}>
+                      {deliveryFee === 0 ? 'Offerts' : formatPrice(deliveryFee)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-neutral-500">
-                  <span>Frais de livraison</span>
-                  <span className={deliveryFee === 0 ? 'text-brand' : ''}>
-                    {deliveryFee === 0 ? 'Offerts' : formatPrice(deliveryFee)}
-                  </span>
+                  <span>Pourboire</span>
+                  <span>{formatPrice(tipCents)}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {TIP_CHOICES.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTipCents(t)}
+                      className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${tipCents === t ? 'border-brand bg-brand text-white' : 'border-brand/20 text-brand'}`}
+                    >
+                      {t === 0 ? 'Aucun' : formatPrice(t)}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -252,6 +327,34 @@ export function CartPage() {
                 <span>Total</span>
                 <span>{formatPrice(total)}</span>
               </div>
+
+              {cards && cards.length > 0 && (
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Carte</label>
+                  <select
+                    value={selectedCard?.id ?? ''}
+                    onChange={(e) => setCardId(e.target.value)}
+                    className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
+                  >
+                    {cards.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.brand} •••• {c.last4}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {needsCard && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  Ajoutez une carte dans votre profil pour payer.
+                </p>
+              )}
+              {refusal && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{refusal}</p>}
+              {belowMinimum && quote && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  Minimum de commande pour la livraison : {formatPrice(quote.minimumOrderCents)}
+                </p>
+              )}
 
               {checkout.isError && (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -264,7 +367,7 @@ export function CartPage() {
               </Button>
 
               <p className="flex items-center gap-1.5 text-xs text-neutral-400">
-                <Clock size={13} /> Livraison sous 30-40 min
+                <Clock size={13} /> {isPickup ? 'Prêt' : 'Livraison'} sous {isPickup ? `${quote?.prepTimeMinutes ?? 20} min` : eta}
               </p>
               <p className="text-xs text-neutral-400">
                 En passant commande, vous acceptez nos conditions d'utilisation et notre politique de

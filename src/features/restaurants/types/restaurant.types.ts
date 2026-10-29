@@ -8,6 +8,47 @@ export interface Restaurant {
   city: string;
   plan: string;
   isActive: boolean;
+  phone?: string;
+  timeZone?: string;
+  openingHours?: OpeningSlot[];
+  isOpenNow?: boolean;
+  acceptingOrders?: boolean;
+  prepTimeMinutes?: number;
+  deliveryRadiusKm?: number;
+  deliveryFeeCents?: number;
+  minimumOrderCents?: number;
+  seatingCapacity?: number;
+}
+
+/** day: 0 = Sunday … 6 = Saturday; times are HH:mm, restaurant local time. */
+export interface OpeningSlot {
+  day: number;
+  opens: string;
+  closes: string;
+}
+
+/** franchise-service's answer: can it take this order now, at what fee. */
+export interface DeliveryQuote {
+  canOrder: boolean;
+  refusal: 'INACTIVE' | 'CLOSED' | 'PAUSED' | 'OUTOFZONE' | 'UNKNOWNADDRESS' | null;
+  isOpen: boolean;
+  acceptingOrders: boolean;
+  distanceKm: number | null;
+  deliveryFeeCents: number;
+  minimumOrderCents: number;
+  prepTimeMinutes: number;
+  estimatedDeliveryMinutes: number;
+}
+
+export interface OperationsForm {
+  phone: string;
+  timeZone: string;
+  openingHours: OpeningSlot[];
+  prepTimeMinutes: number;
+  deliveryRadiusKm: number;
+  deliveryFeeCents: number;
+  minimumOrderCents: number;
+  seatingCapacity: number;
 }
 
 /** Payload for creating/updating a restaurant (siège only). */

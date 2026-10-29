@@ -4,6 +4,7 @@ import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { selectIsLoggedIn, useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
+import { usePaymentMethods } from '../../payments/hooks/usePayments';
 import { useCheckout } from '../../orders/hooks/useOrders';
 import { formatPrice } from '../../../utils/format';
 import { useChat } from '../hooks/useChat';
@@ -143,19 +144,28 @@ function OrderProposalCard({ message }: { message: ChatMessage }) {
   const setProposalStatus = useChatStore((s) => s.setProposalStatus);
   const addMessage = useChatStore((s) => s.addMessage);
   const checkout = useCheckout();
+  const { data: cards } = usePaymentMethods();
+  const defaultCard = cards?.find((c) => c.isDefault) ?? cards?.[0];
   if (!proposal) return null;
 
   const confirm = () => {
     checkout.mutate(
       {
-        restaurant_id: proposal.restaurant_id,
-        delivery_address: proposal.delivery_address,
-        items: proposal.items.map((it) => ({
-          menu_item_id: it.menu_item_id,
-          menu_item_name: it.menu_item_name,
-          quantity: it.quantity,
-          unit_price_cents: it.unit_price_cents,
-        })),
+        order: {
+          restaurant_id: proposal.restaurant_id,
+          delivery_address: proposal.delivery_address,
+          items: proposal.items.map((it) => ({
+            menu_item_id: it.menu_item_id,
+            menu_item_name: it.menu_item_name,
+            quantity: it.quantity,
+            unit_price_cents: it.unit_price_cents,
+          })),
+          fulfillment: 'DELIVERY',
+          tip_cents: 0,
+        },
+        paymentMethodId: defaultCard?.id,
+        // One proposal is one order, whatever the number of clicks.
+        idempotencyKey: `chat-${message.id}`,
       },
       {
         onSuccess: (order) => {
