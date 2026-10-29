@@ -34,3 +34,31 @@ export function useUpdateRestaurant() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['restaurants'] }),
   });
 }
+
+/** Live quote for the cart: open now? in zone? which fee and delay? */
+export function useDeliveryQuote(restaurantId: string | null, address: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['restaurants', restaurantId, 'quote', address],
+    queryFn: () => restaurantsApi.quote(restaurantId as string, address),
+    enabled: enabled && !!restaurantId,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useUpdateOperations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, form }: { id: string; form: Parameters<typeof restaurantsApi.updateOperations>[1] }) =>
+      restaurantsApi.updateOperations(id, form),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['restaurants'] }),
+  });
+}
+
+export function useSetOrderIntake() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, acceptingOrders }: { id: string; acceptingOrders: boolean }) =>
+      restaurantsApi.setOrderIntake(id, acceptingOrders),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['restaurants'] }),
+  });
+}

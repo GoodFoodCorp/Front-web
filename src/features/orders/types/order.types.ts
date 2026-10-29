@@ -30,7 +30,14 @@ export interface Order {
   items: OrderItem[];
   placed_at: string;
   confirmed_at?: string;
+  fulfillment: Fulfillment;
+  delivery_fee_cents: number;
+  tip_cents: number;
+  estimated_minutes?: number;
+  courier_id?: string;
 }
+
+export type Fulfillment = 'DELIVERY' | 'PICKUP';
 
 export interface PaymentIntent {
   intent_id: string;
@@ -52,4 +59,15 @@ export interface CreateOrderPayload {
   delivery_address: string;
   items: CreateOrderItem[];
   promo_code?: string;
+  fulfillment: Fulfillment;
+  tip_cents: number;
+}
+
+/** What the customer chose at checkout besides the order itself. */
+export interface CheckoutRequest {
+  order: CreateOrderPayload;
+  /** One of the customer's saved cards (required with real Stripe). */
+  paymentMethodId?: string;
+  /** Same key for every retry of one checkout: never two orders. */
+  idempotencyKey: string;
 }

@@ -1,5 +1,5 @@
 import { http } from '../../../services/http';
-import type { Restaurant } from '../types/restaurant.types';
+import type { DeliveryQuote, OperationsForm, Restaurant } from '../types/restaurant.types';
 
 /** Restaurants are served by franchise-service. */
 export const restaurantsApi = {
@@ -18,4 +18,16 @@ export const restaurantsApi = {
 
   update: (id: string, form: { name: string; address: string; city: string; isActive: boolean }) =>
     http<Restaurant>(`/api/restaurants/${id}`, { method: 'PATCH', body: JSON.stringify(form) }),
+
+  /** Opening hours, delivery zone and fees, preparation time, seats. */
+  updateOperations: (id: string, form: OperationsForm) =>
+    http<Restaurant>(`/api/restaurants/${id}/operations`, { method: 'PUT', body: JSON.stringify(form) }),
+
+  /** Pauses or resumes new orders. */
+  setOrderIntake: (id: string, acceptingOrders: boolean) =>
+    http<Restaurant>(`/api/restaurants/${id}/order-intake`, { method: 'PUT', body: JSON.stringify({ acceptingOrders }) }),
+
+  /** Can the restaurant take an order for this address now ("" = pickup)? */
+  quote: (id: string, address: string) =>
+    http<DeliveryQuote>(`/api/restaurants/${id}/quote?address=${encodeURIComponent(address)}`),
 };

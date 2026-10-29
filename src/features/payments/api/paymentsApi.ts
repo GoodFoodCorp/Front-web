@@ -43,6 +43,9 @@ export const paymentsApi = {
     return dtos.map(toPaymentMethod);
   },
 
+  /** Starts registering a card with Stripe (SetupIntent client secret). */
+  createCardSetup: () => http<{ client_secret: string }>('/api/payments/methods/setup-intent', { method: 'POST' }),
+
   addMethod: async (form: AddPaymentMethodForm): Promise<PaymentMethod> =>
     toPaymentMethod(
       await http<PaymentMethodDto>('/api/payments/methods', { method: 'POST', body: JSON.stringify(form) }),

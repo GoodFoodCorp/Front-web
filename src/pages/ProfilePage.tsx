@@ -40,7 +40,8 @@ import { useChangePassword, useDeleteAccount, useLogout } from '../features/auth
 import { useFavorites, useRemoveFavorite } from '../features/favorites/hooks/useFavorites';
 import { useMenuItemsByIds } from '../features/catalog/hooks/useMenu';
 import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
-import { useAddPaymentMethod, usePaymentHistory, usePaymentMethods, useRemovePaymentMethod } from '../features/payments/hooks/usePayments';
+import { usePaymentHistory, usePaymentMethods, useRemovePaymentMethod } from '../features/payments/hooks/usePayments';
+import { AddCardForm } from '../features/payments/components/AddCardForm';
 import { formatDateTime, formatPrice } from '../utils/format';
 import { dishPhoto } from '../utils/images';
 
@@ -451,29 +452,8 @@ const CARD_BRAND_ICON: Record<string, string> = {
 function PaymentsPanel() {
   const { data: history, isLoading: historyLoading } = usePaymentHistory();
   const { data: methods, isLoading: methodsLoading } = usePaymentMethods();
-  const addMethod = useAddPaymentMethod();
   const removeMethod = useRemovePaymentMethod();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ cardholder_name: '', card_number: '', exp_month: '', exp_year: '', is_default: false });
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    addMethod.mutate(
-      {
-        cardholder_name: form.cardholder_name,
-        card_number: form.card_number,
-        exp_month: Number(form.exp_month),
-        exp_year: Number(form.exp_year),
-        is_default: form.is_default,
-      },
-      {
-        onSuccess: () => {
-          setShowForm(false);
-          setForm({ cardholder_name: '', card_number: '', exp_month: '', exp_year: '', is_default: false });
-        },
-      },
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -482,15 +462,12 @@ function PaymentsPanel() {
           <div>
             <h2 className="font-display text-lg font-bold text-brand">Moyens de paiement</h2>
             <p className="text-sm text-neutral-400">
-              Mode démonstration — aucune carte réelle n'est traitée ni transmise à un processeur.
+              Cartes enregistrées chez Stripe — leur numéro n'est jamais stocké par Good Food.
             </p>
           </div>
           <Button
             variant="ghost"
-            onClick={() => {
-              addMethod.reset();
-              setShowForm(true);
-            }}
+            onClick={() => setShowForm(true)}
             className="px-3 py-1.5"
           >
             <Plus size={16} /> Ajouter une carte
@@ -499,66 +476,7 @@ function PaymentsPanel() {
 
         {showForm && (
           <Modal title="Ajouter une carte" onClose={() => setShowForm(false)} maxWidth="max-w-xl">
-          <form onSubmit={submit} className="grid gap-4 sm:grid-cols-6">
-            <Field label="Nom du titulaire" className="sm:col-span-6">
-              <Input
-                autoFocus
-                required
-                value={form.cardholder_name}
-                onChange={(e) => setForm({ ...form, cardholder_name: e.target.value })}
-              />
-            </Field>
-            <Field label="Numéro de carte" className="sm:col-span-3">
-              <Input
-                placeholder="4242 4242 4242 4242"
-                required
-                value={form.card_number}
-                onChange={(e) => setForm({ ...form, card_number: e.target.value })}
-              />
-            </Field>
-            <Field label="Mois" className="sm:col-span-1">
-              <Input
-                type="number"
-                placeholder="MM"
-                min="1"
-                max="12"
-                required
-                value={form.exp_month}
-                onChange={(e) => setForm({ ...form, exp_month: e.target.value })}
-              />
-            </Field>
-            <Field label="Année" className="sm:col-span-2">
-              <Input
-                type="number"
-                placeholder="AAAA"
-                min="2024"
-                required
-                value={form.exp_year}
-                onChange={(e) => setForm({ ...form, exp_year: e.target.value })}
-              />
-            </Field>
-            <label className="sm:col-span-6 flex items-center gap-2 text-sm font-semibold text-neutral-600">
-              <input
-                type="checkbox"
-                checked={form.is_default}
-                onChange={(e) => setForm({ ...form, is_default: e.target.checked })}
-              />
-              Définir comme moyen de paiement par défaut
-            </label>
-            {addMethod.isError && (
-              <p className="sm:col-span-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                {(addMethod.error as Error).message}
-              </p>
-            )}
-            <div className="sm:col-span-6 flex gap-2">
-              <Button type="submit" disabled={addMethod.isPending}>
-                {addMethod.isPending ? 'Ajout…' : 'Ajouter la carte'}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
-                Annuler
-              </Button>
-            </div>
-          </form>
+            <AddCardForm onDone={() => setShowForm(false)} onCancel={() => setShowForm(false)} />
           </Modal>
         )}
 

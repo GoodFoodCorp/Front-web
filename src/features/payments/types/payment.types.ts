@@ -1,4 +1,4 @@
-export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED';
+export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED' | 'CANCELED';
 
 export interface PaymentHistoryEntry {
   id: string;
@@ -41,11 +41,8 @@ export interface PaymentMethodDto {
   created_at: string;
 }
 
-/** Demo mode only — see payment-service's domain.NewPaymentMethod. */
+/** A card registered with Stripe: only its payment method id is sent. */
 export interface AddPaymentMethodForm {
-  cardholder_name: string;
-  card_number: string;
-  exp_month: number;
-  exp_year: number;
+  payment_method_id: string;
   is_default: boolean;
 }
