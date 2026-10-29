@@ -41,6 +41,7 @@ import { useFavorites, useRemoveFavorite } from '../features/favorites/hooks/use
 import { useMenuItemsByIds } from '../features/catalog/hooks/useMenu';
 import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
 import { usePaymentHistory, usePaymentMethods, useRemovePaymentMethod } from '../features/payments/hooks/usePayments';
+import { profileApi } from '../features/profile/api/profileApi';
 import { AddCardForm } from '../features/payments/components/AddCardForm';
 import { formatDateTime, formatPrice } from '../utils/format';
 import { dishPhoto } from '../utils/images';
@@ -449,6 +450,17 @@ const CARD_BRAND_ICON: Record<string, string> = {
   Carte: '💳',
 };
 
+/** Saves the user's personal data as a JSON file (GDPR access right). */
+async function downloadMyData() {
+  const data = await profileApi.exportMyData();
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'goodfood-mes-donnees.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function PaymentsPanel() {
   const { data: history, isLoading: historyLoading } = usePaymentHistory();
   const { data: methods, isLoading: methodsLoading } = usePaymentMethods();
@@ -774,8 +786,11 @@ function SettingsPanel() {
           <h2 className="font-display text-lg font-bold">Zone dangereuse</h2>
         </div>
         <p className="mt-1 text-sm text-neutral-500">
-          La suppression de votre compte est définitive et irréversible.
+          La suppression de votre compte est définitive et irréversible : vos données personnelles sont effacées.
         </p>
+        <Button variant="ghost" className="mt-3" onClick={() => void downloadMyData()}>
+          Télécharger mes données
+        </Button>
 
         {!deleteOpen ? (
           <Button variant="danger" className="mt-4" onClick={() => setDeleteOpen(true)}>

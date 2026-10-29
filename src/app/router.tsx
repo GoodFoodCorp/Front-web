@@ -3,6 +3,7 @@ import { StorefrontLayout } from '../layouts/StorefrontLayout';
 import { PortalLayout } from '../layouts/PortalLayout';
 import { AdminLayout } from '../layouts/AdminLayout';
 import { RequireRole } from '../components/RequireRole';
+import { RestaurantSettingsPage } from '../pages/RestaurantSettingsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
@@ -119,6 +120,7 @@ export function AppRouter() {
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="reservations" element={<PortalReservationsPage />} />
         <Route path="orders" element={<PortalOrdersPage />} />
+        <Route path="settings" element={<RestaurantSettingsPage />} />
       </Route>
 
       {/* Head office portal (admin only) */}

@@ -21,6 +21,20 @@ export interface Delivery {
   estimatedDeliveryTime: string | null;
   /** Courier pay in cents; null on deliveries created before fees existed. */
   courierFeeCents: number | null;
+  tipCents?: number;
+  rating?: number | null;
+}
+
+/** What a courier sees of a delivery before accepting it (no customer data). */
+export interface AvailableDelivery {
+  id: string;
+  orderId: string;
+  pickup: GeoPoint;
+  dropoffArea: { lat: number; lng: number };
+  distanceKm: number;
+  courierFeeCents: number;
+  tipCents: number;
+  estimatedDeliveryTime: string | null;
 }
 
 export interface LastPosition {
@@ -32,4 +46,6 @@ export interface LastPosition {
 export interface DeliveryDetail {
   delivery: Delivery;
   lastPosition: LastPosition | null;
+  /** Given to the courier at the door; only the customer receives it. */
+  handoverCode?: string;
 }

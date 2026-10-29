@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   ScrollText,
+  Settings,
   Truck,
   UtensilsCrossed,
   Users,
@@ -22,6 +23,7 @@ const NAV = [
   { to: '/portal/orders', label: 'Commandes', icon: ScrollText, end: false },
   { to: '/portal/reservations', label: 'Réservations', icon: CalendarDays, end: false },
   { to: '/portal/suppliers', label: 'Fournisseurs', icon: Users, end: false },
+  { to: '/portal/settings', label: 'Réglages du restaurant', icon: Settings, end: false },
 ];
 
 export function PortalLayout() {

@@ -123,12 +123,10 @@ function BookingForm({ onDone }: { onDone: () => void }) {
     form.restaurantId,
     form.date,
   );
+  // A slot is unavailable when its remaining covers cannot seat the party.
   const fullSlots = (availability ?? [])
-    .filter((a) => a.full)
-    .flatMap((a) => {
-      const hour = String(a.hour).padStart(2, '0');
-      return [`${hour}:00`, `${hour}:30`];
-    });
+    .filter((a) => a.remainingCovers < Number(form.partySize || 1))
+    .map((a) => a.time);
 
   return (
     <form onSubmit={submit} className="space-y-3">

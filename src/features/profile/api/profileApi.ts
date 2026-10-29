@@ -2,6 +2,9 @@ import { http } from '../../../services/http';
 import type { Address, AddressForm, NotificationPreferences, ProfileForm, UserProfile } from '../types/profile.types';
 
 export const profileApi = {
+  /** Every piece of personal data held by user-service (GDPR access right). */
+  exportMyData: () => http<Record<string, unknown>>('/api/users/me/export'),
+
   me: () => http<UserProfile>('/api/users/me'),
 
   update: (form: ProfileForm) =>
