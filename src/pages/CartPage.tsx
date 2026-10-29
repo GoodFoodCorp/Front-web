@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { formatPrice } from '../utils/format';
 import { useCartStore } from '../store/cartStore';
-import { useAuthStore } from '../store/authStore';
+import { selectIsLoggedIn, useAuthStore } from '../store/authStore';
 import { useCheckout } from '../features/orders/hooks/useOrders';
 import { useMyAddresses } from '../features/profile/hooks/useProfile';
 import { usePreviewPromoCode } from '../features/promos/hooks/usePromos';
@@ -20,7 +20,7 @@ export function CartPage() {
   const { lines, restaurantId, restaurantName, add, decrement, remove, totalCents } = useCartStore();
   const checkout = useCheckout();
   const previewPromo = usePreviewPromoCode();
-  const isLoggedIn = !!useAuthStore((s) => s.accessToken);
+  const isLoggedIn = useAuthStore(selectIsLoggedIn);
   const { data: addresses } = useMyAddresses();
   const defaultAddress = addresses?.find((a) => a.is_default) ?? addresses?.[0];
 

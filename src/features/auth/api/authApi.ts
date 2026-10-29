@@ -27,8 +27,12 @@ export const authApi = {
    *  login page never shows a button that cannot work. */
   oauthProviders: () => http<OAuthProvider[]>('/api/auth/oauth/providers'),
 
-  logout: (refreshToken: string) =>
-    http('/api/auth/logout', {
+  logout: () => http('/api/auth/logout', { method: 'POST' }),
+
+  /** Exchanges a refresh token received out of band (OAuth redirect) for the
+   *  session cookies and a fresh access token. */
+  adoptRefreshToken: (refreshToken: string) =>
+    http<LoginResponse>('/api/auth/refresh', {
       method: 'POST',
       body: JSON.stringify({ refresh_token: refreshToken }),
     }),

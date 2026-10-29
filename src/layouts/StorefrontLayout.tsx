@@ -30,7 +30,8 @@ export function StorefrontLayout() {
   const navigate = useNavigate();
   const logout = useLogout();
   const count = useCartStore((s) => s.count());
-  const { accessToken, email, roles } = useAuthStore();
+  const { userId, email, roles } = useAuthStore();
+  const isLoggedIn = userId !== null;
   const { data: restaurants } = useRestaurants();
   const { restaurantId, setRestaurantId } = useLocationStore();
 
@@ -212,13 +213,13 @@ export function StorefrontLayout() {
             {/* User menu */}
             <div className="relative">
               <button
-                onClick={() => (accessToken ? setUserOpen((v) => !v) : navigate('/login'))}
+                onClick={() => (isLoggedIn ? setUserOpen((v) => !v) : navigate('/login'))}
                 className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10"
                 aria-label="Compte"
               >
                 <User size={20} />
               </button>
-              {userOpen && accessToken && (
+              {userOpen && isLoggedIn && (
                 <>
                   <button
                     aria-label="Fermer"
