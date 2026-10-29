@@ -1,25 +1,16 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { authApi } from '../api/authApi';
 import type { LoginResponse } from '../types/auth.types';
-import { decodeJwt, useAuthStore } from '../../../store/authStore';
+import { sessionFromToken, useAuthStore } from '../../../store/authStore';
 import { useCartStore } from '../../../store/cartStore';
 
 type Credentials = { email: string; password: string };
 
-/** Hydrates the session store from a login response's JWT. */
+/** Hydrates the session store from a login response. Only the access token
+ *  is kept, in memory: the refresh token stays in its HttpOnly cookie. */
 export function useHydrateSession() {
   const setSession = useAuthStore((s) => s.setSession);
-  return (data: LoginResponse) => {
-    const claims = decodeJwt(data.access_token);
-    setSession({
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      userId: (claims.sub as string) ?? null,
-      email: (claims.email as string) ?? null,
-      tenantId: (claims.tenant_id as string) || null,
-      roles: (claims.role_slugs as string[]) ?? [],
-    });
-  };
+  return (data: Pick<LoginResponse, 'access_token'>) => setSession(sessionFromToken(data.access_token));
 }
 
 /** Providers enabled server-side. Fails soft: if auth-service can't answer,
@@ -56,13 +47,12 @@ export function useRegister() {
 
 /** Clears the session server- and client-side. */
 export function useLogout() {
-  const { refreshToken, logout } = useAuthStore();
+  const logout = useAuthStore((s) => s.logout);
   const clearCart = useCartStore((s) => s.clear);
 
   return () => {
-    if (refreshToken) {
-      void authApi.logout(refreshToken).catch(() => undefined);
-    }
+    // The refresh cookie travels with the call: auth-service revokes it.
+    void authApi.logout().catch(() => undefined);
     logout();
     clearCart();
   };

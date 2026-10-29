@@ -1,7 +1,7 @@
 import { Heart } from 'lucide-react';
 import { useToggleFavorite } from '../../features/favorites/hooks/useFavorites';
 import type { FavoriteKind } from '../../features/favorites/types/favorite.types';
-import { useAuthStore } from '../../store/authStore';
+import { selectIsLoggedIn, useAuthStore } from '../../store/authStore';
 
 /** Pure UI heart toggle — favoriting is scoped to logged-in customers. */
 export function FavoriteButton({
@@ -15,7 +15,7 @@ export function FavoriteButton({
   size?: number;
   className?: string;
 }) {
-  const isLoggedIn = !!useAuthStore((s) => s.accessToken);
+  const isLoggedIn = useAuthStore(selectIsLoggedIn);
   const { isFavorite, toggle, isPending } = useToggleFavorite(kind, targetId);
 
   if (!isLoggedIn) return null;

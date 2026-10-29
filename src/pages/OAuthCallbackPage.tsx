@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Spinner } from '../components/Spinner';
 import { useHydrateSession } from '../features/auth/hooks/useAuth';
+import { authApi } from '../features/auth/api/authApi';
 import { decodeJwt } from '../store/authStore';
 import logo from '../assets/logo.svg';
 
@@ -39,12 +40,18 @@ export function OAuthCallbackPage() {
       return;
     }
 
-    hydrate({ access_token: accessToken, refresh_token: refreshToken });
-
-    const roles = (decodeJwt(accessToken).role_slugs as string[]) ?? [];
-    if (roles.includes('manager')) navigate('/portal', { replace: true });
-    else if (roles.includes('admin')) navigate('/admin', { replace: true });
-    else navigate('/', { replace: true });
+    // The tokens came in the URL fragment: trade the refresh token for the
+    // HttpOnly session cookies, so nothing has to be kept by the page.
+    void authApi
+      .adoptRefreshToken(refreshToken)
+      .then((session) => {
+        hydrate(session);
+        const roles = (decodeJwt(session.access_token).role_slugs as string[]) ?? [];
+        if (roles.includes('manager')) navigate('/portal', { replace: true });
+        else if (roles.includes('admin')) navigate('/admin', { replace: true });
+        else navigate('/', { replace: true });
+      })
+      .catch(() => setError('session_refusee'));
   }, [hydrate, navigate]);
 
   if (error) {
@@ -78,6 +85,8 @@ function errorMessage(code: string): string {
       return "Le fournisseur n'a pas confirmé votre identité. Réessayez.";
     case 'jetons_manquants':
       return 'Réponse incomplète du serveur.';
+    case 'session_refusee':
+      return "La session n'a pas pu être ouverte. Réessayez.";
     case 'access_denied':
       return 'Vous avez refusé le partage de vos informations.';
     default:

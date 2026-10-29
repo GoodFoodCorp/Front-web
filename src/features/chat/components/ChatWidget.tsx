@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, RotateCcw, Send, Store, X } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
-import { useAuthStore } from '../../../store/authStore';
+import { selectIsLoggedIn, useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
 import { useCheckout } from '../../orders/hooks/useOrders';
 import { formatPrice } from '../../../utils/format';
@@ -14,7 +14,7 @@ const GREETING = "Bonjour ! Je suis l'assistant Good Food. Posez-moi une questio
 /** Floating support chat, bottom-right on every page. Only shown to logged-in
  *  customers: the assistant's value is answering about *their* orders. */
 export function ChatWidget() {
-  const isLoggedIn = !!useAuthStore((s) => s.accessToken);
+  const isLoggedIn = useAuthStore(selectIsLoggedIn);
   const userId = useAuthStore((s) => s.userId);
   const claimFor = useChatStore((s) => s.claimFor);
   // A conversation is private to the account that had it: switching account (or
