@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { StripeCardElement } from '@stripe/stripe-js';
-import { CARD_STYLE, getStripe } from '../../../services/stripe';
+import { CARD_OPTIONS, getStripe } from '../../../services/stripe';
 
 /**
  * A card typed for this payment only (not saved). The number is typed into
@@ -20,7 +20,7 @@ export function NewCardField({
     let cancelled = false;
     void getStripe().then((stripe) => {
       if (cancelled || !stripe || !mountRef.current) return;
-      card = stripe.elements({ locale: 'fr' }).create('card', { hidePostalCode: true, style: CARD_STYLE });
+      card = stripe.elements({ locale: 'fr' }).create('card', CARD_OPTIONS);
       card.on('change', (e) => onComplete(e.complete));
       card.mount(mountRef.current);
       onReady(card);
