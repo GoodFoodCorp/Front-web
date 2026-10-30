@@ -7,6 +7,9 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
         # Read from Front-web/.env; must pair with payment-service's STRIPE_SECRET_KEY.
         VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+        # Local stack: the login page offers the seeded test accounts. The
+        # production image (CI) never sets it, so they never show there.
+        VITE_SHOW_DEMO_ACCOUNTS: ${VITE_SHOW_DEMO_ACCOUNTS:-true}
     container_name: web-app
     restart: unless-stopped
     ports:
