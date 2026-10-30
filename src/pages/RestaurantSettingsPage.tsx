@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { Select } from '../components/Select';
 import { Spinner } from '../components/Spinner';
 import { Switch } from '../components/Switch';
 import { useAuthStore } from '../store/authStore';
@@ -73,13 +74,13 @@ export function RestaurantSettingsPage() {
           <p className="text-xs text-neutral-400">Heure locale du restaurant ({form.timeZone}). Sans horaire, le restaurant est considéré ouvert.</p>
           {form.openingHours.map((slot, i) => (
             <div key={i} className="flex flex-wrap items-center gap-2">
-              <select value={slot.day} onChange={(e) => setSlot(i, { day: Number(e.target.value) })} className={inputClass}>
-                {DAY_ORDER.map((d) => (
-                  <option key={d} value={d}>
-                    {DAYS[d]}
-                  </option>
-                ))}
-              </select>
+              <Select
+                aria-label="Jour"
+                className="w-40"
+                value={String(slot.day)}
+                onChange={(v) => setSlot(i, { day: Number(v) })}
+                options={DAY_ORDER.map((d) => ({ value: String(d), label: DAYS[d] }))}
+              />
               <input type="time" value={slot.opens} onChange={(e) => setSlot(i, { opens: e.target.value })} className={inputClass} />
               <span className="text-sm text-neutral-400">à</span>
               <input type="time" value={slot.closes} onChange={(e) => setSlot(i, { closes: e.target.value })} className={inputClass} />

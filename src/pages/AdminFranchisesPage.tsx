@@ -4,6 +4,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
 import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import { useAllRestaurants, useCreateRestaurant, useUpdateRestaurant } from '../features/restaurants/hooks/useRestaurants';
@@ -63,15 +64,13 @@ export function AdminFranchisesPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
+        <Select
+          aria-label="Filtrer par statut"
+          className="w-48"
           value={status}
-          onChange={(e) => setStatus(e.target.value as (typeof STATUS_FILTERS)[number])}
-          className="rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
-        >
-          {STATUS_FILTERS.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
+          onChange={(v) => setStatus(v as (typeof STATUS_FILTERS)[number])}
+          options={STATUS_FILTERS.map((s) => ({ value: s, label: s }))}
+        />
         <Button
           className="ml-auto"
           onClick={() => setCreating(true)}

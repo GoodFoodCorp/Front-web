@@ -4,10 +4,8 @@ import type { RecipeLine } from '../../features/catalog/types/menu.types';
 import type { StockItem } from '../../features/stock/types/stock.types';
 import { Button } from '../Button';
 import { Input } from '../Input';
+import { Select } from '../Select';
 import { MAX_RECIPE_LINES, parseQuantity } from './recipeLines';
-
-const SELECT_CLASS =
-  'w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand';
 
 export type StockStatus = 'loading' | 'error' | 'ready';
 
@@ -81,25 +79,19 @@ export function RecipeEditor({
         const draft = drafts[index] ?? (line.quantity > 0 ? String(line.quantity) : '');
         return (
           <div key={index} className="grid grid-cols-[minmax(0,1fr)_6rem_3rem_2.5rem] items-center gap-2">
-            <select
+            <Select
               aria-label={`Article du stock, ingrédient ${index + 1}`}
-              className={SELECT_CLASS}
               value={line.stockItemId}
-              onChange={(e) => pick(index, e.target.value)}
-            >
-              <option value="" disabled>
-                Choisir un article…
-              </option>
-              {/* Keep a recipe line whose article no longer exists visible. */}
-              {line.stockItemId && !known && <option value={line.stockItemId}>{line.stockItemName}</option>}
-              {stockItems
-                .filter((s) => s.id === line.stockItemId || !chosen.has(s.id))
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-            </select>
+              onChange={(v) => pick(index, v)}
+              placeholder="Choisir un article…"
+              options={[
+                // Keep a recipe line whose article no longer exists visible.
+                ...(line.stockItemId && !known ? [{ value: line.stockItemId, label: line.stockItemName }] : []),
+                ...stockItems
+                  .filter((s) => s.id === line.stockItemId || !chosen.has(s.id))
+                  .map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
             <Input
               aria-label={`Quantité, ingrédient ${index + 1}`}
               type="text"
