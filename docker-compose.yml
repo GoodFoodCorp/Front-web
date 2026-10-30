@@ -5,6 +5,8 @@ services:
       args:
         # Same origin as the page: nginx proxies /api/* to the services (no CORS).
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
+        # Read from Front-web/.env; must pair with payment-service's STRIPE_SECRET_KEY.
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
     container_name: web-app
     restart: unless-stopped
     ports:
