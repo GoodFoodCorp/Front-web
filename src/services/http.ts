@@ -77,12 +77,35 @@ export async function http<T>(path: string, options: RequestInit = {}): Promise<
   }
 
   const text = await res.text();
-  const body = text ? (JSON.parse(text) as unknown) : null;
+  const body = parseBody(text);
 
   if (!res.ok) {
-    throw new ApiError(res.status, (body as { error?: string } | null)?.error ?? `Erreur ${res.status}`);
+    throw new ApiError(res.status, errorMessage(res.status, body));
   }
   // 204 No Content (every DELETE in this app) has no body.
   if (res.status === 204) return undefined as T;
   return body as T;
+}
+
+/** JSON body, or null when there is none or it is not JSON (a proxy's HTML
+ *  error page, for instance). */
+function parseBody(text: string): unknown {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/** The services answer {error} (Go, Node), {detail} (FastAPI) or a
+ *  ProblemDetails {title, errors} (.NET); a gateway may answer HTML. */
+function errorMessage(status: number, body: unknown): string {
+  const b = (body ?? {}) as { error?: unknown; detail?: unknown; title?: unknown; message?: unknown };
+  for (const candidate of [b.error, b.detail, b.message, b.title]) {
+    if (typeof candidate === 'string' && candidate.trim()) return candidate;
+  }
+  if (status === 429) return 'Trop de tentatives. Réessayez dans une minute.';
+  if (status >= 500) return 'Le service est momentanément indisponible. Réessayez dans un instant.';
+  return `Erreur ${status}`;
 }
