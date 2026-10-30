@@ -12,6 +12,7 @@ import {
   Tag,
   UtensilsCrossed,
   Users,
+  Wallet,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useLogout } from '../features/auth/hooks/useAuth';
@@ -23,6 +24,7 @@ const NAV = [
   { to: '/admin/menu', label: 'Menus & Plats', icon: UtensilsCrossed, end: false },
   { to: '/admin/promotions', label: 'Promotions', icon: Tag, end: false },
   { to: '/admin/personnel', label: 'Personnel', icon: Users, end: false },
+  { to: '/admin/payouts', label: 'Paiements livreurs', icon: Wallet, end: false },
   { to: '/admin/franchises', label: 'Franchisés', icon: Building2, end: false },
   { to: '/admin/settings', label: 'Paramètres', icon: Settings, end: false },
 ];
