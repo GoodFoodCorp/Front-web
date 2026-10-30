@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { favoritesApi } from '../api/favoritesApi';
+import { selectIsLoggedIn, useAuthStore } from '../../../store/authStore';
 import type { FavoriteKind } from '../types/favorite.types';
 
 export function useFavorites() {
-  return useQuery({ queryKey: ['favorites'], queryFn: favoritesApi.list });
+  const isLoggedIn = useAuthStore(selectIsLoggedIn);
+  return useQuery({ queryKey: ['favorites'], queryFn: favoritesApi.list, enabled: isLoggedIn });
 }
 
 export function useAddFavorite() {

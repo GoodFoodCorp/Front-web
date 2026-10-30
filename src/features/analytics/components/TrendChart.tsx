@@ -15,6 +15,9 @@ const BRAND_LIGHT = '#0a5c40';
 const GRID = '#00443014';
 const AXIS_TICK = { fontSize: 12, fill: '#6b7280' };
 
+/** 20 000 → "20 k": axis labels stay short enough to fit. */
+const compact = (v: number) => new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 }).format(v);
+
 function formatDay(day: string): string {
   const [, month, dayOfMonth] = day.split('-');
   return `${dayOfMonth}/${month}`;
@@ -40,10 +43,10 @@ export function RevenueTrendChart({ points, title = 'Aperçu des ventes', subtit
   return (
     <CardFrame title={title} subtitle={subtitle ?? `Chiffre d'affaires par jour`}>
       <ResponsiveContainer width="100%" height={260}>
-        <LineChart data={data} margin={{ left: -20, right: 8 }}>
+        <LineChart data={data} margin={{ left: 0, right: 8 }}>
           <CartesianGrid strokeDasharray="4 4" stroke={GRID} vertical={false} />
           <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} minTickGap={24} />
-          <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
+          <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} width={56} tickFormatter={compact} />
           <Tooltip
             formatter={(value: number) => [`${value.toFixed(2)} €`, 'Chiffre d’affaires']}
             labelFormatter={(label: string) => `Le ${label}`}
@@ -74,7 +77,7 @@ export function OrdersTrendChart({ points, title = 'Aperçu des commandes', subt
   return (
     <CardFrame title={title} subtitle={subtitle ?? 'Nombre de commandes par jour'}>
       <ResponsiveContainer width="100%" height={260}>
-        <BarChart data={data} margin={{ left: -20, right: 8 }} barCategoryGap={2}>
+        <BarChart data={data} margin={{ left: 0, right: 8 }} barCategoryGap={2}>
           <CartesianGrid strokeDasharray="4 4" stroke={GRID} vertical={false} />
           <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} minTickGap={24} />
           <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />

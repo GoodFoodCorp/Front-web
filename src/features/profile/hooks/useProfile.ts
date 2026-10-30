@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { profileApi } from '../api/profileApi';
+import { selectIsLoggedIn, useAuthStore } from '../../../store/authStore';
 import type { AddressForm, NotificationPreferences, ProfileForm } from '../types/profile.types';
 
 export function useMyProfile() {
@@ -35,7 +36,8 @@ export function useUpdateNotificationPreferences() {
 }
 
 export function useMyAddresses() {
-  return useQuery({ queryKey: ['addresses'], queryFn: profileApi.listAddresses });
+  const isLoggedIn = useAuthStore(selectIsLoggedIn);
+  return useQuery({ queryKey: ['addresses'], queryFn: profileApi.listAddresses, enabled: isLoggedIn });
 }
 
 export function useAddAddress() {
