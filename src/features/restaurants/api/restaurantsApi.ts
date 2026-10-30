@@ -1,5 +1,5 @@
 import { http } from '../../../services/http';
-import type { DeliveryQuote, OperationsForm, Restaurant } from '../types/restaurant.types';
+import type { AddressSuggestion, DeliveryQuote, OperationsForm, Restaurant } from '../types/restaurant.types';
 
 /** Restaurants are served by franchise-service. */
 export const restaurantsApi = {
@@ -26,6 +26,14 @@ export const restaurantsApi = {
   /** Pauses or resumes new orders. */
   setOrderIntake: (id: string, acceptingOrders: boolean) =>
     http<Restaurant>(`/api/restaurants/${id}/order-intake`, { method: 'PUT', body: JSON.stringify({ acceptingOrders }) }),
+
+  /** Street addresses matching what is typed; `near` (a restaurant)
+   *  keeps the deliverable surroundings only. */
+  suggestAddresses: (query: string, near?: { lat: number; lng: number }) =>
+    http<AddressSuggestion[]>(
+      `/api/restaurants/address-suggestions?q=${encodeURIComponent(query)}&limit=5` +
+        (near ? `&lat=${near.lat}&lng=${near.lng}` : ''),
+    ),
 
   /** Can the restaurant take an order for this address now ("" = pickup)? */
   quote: (id: string, address: string) =>

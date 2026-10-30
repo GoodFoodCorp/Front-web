@@ -13,8 +13,10 @@ export const ordersApi = {
 
   listMine: () => http<Order[]>('/api/orders'),
 
-  /** The customer cancels their order (before the kitchen starts). */
-  cancel: (id: string) => http<Order>(`/api/orders/${id}/cancel`, { method: 'POST' }),
+  /** Cancels with a reason: the customer until the kitchen starts, the
+   *  restaurant until the courier has the order. */
+  cancel: (id: string, reason: string, comment: string) =>
+    http<Order>(`/api/orders/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason, comment }) }),
 
   /** A restaurant's orders, newest first, optionally only in some statuses. */
   listByRestaurant: (restaurantId: string, statuses: OrderStatus[] = []) =>

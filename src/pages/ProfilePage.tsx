@@ -34,7 +34,7 @@ import {
   useUpdateProfile,
   useUploadAvatar,
 } from '../features/profile/hooks/useProfile';
-import type { UserProfile } from '../features/profile/types/profile.types';
+import type { AddressForm, UserProfile } from '../features/profile/types/profile.types';
 import { useAuthStore } from '../store/authStore';
 import { useChangePassword, useDeleteAccount, useLogout } from '../features/auth/hooks/useAuth';
 import { useFavorites, useRemoveFavorite } from '../features/favorites/hooks/useFavorites';
@@ -43,6 +43,8 @@ import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
 import { usePaymentHistory, usePaymentMethods, useRemovePaymentMethod } from '../features/payments/hooks/usePayments';
 import { profileApi } from '../features/profile/api/profileApi';
 import { AddCardForm } from '../features/payments/components/AddCardForm';
+import { AddressAutocomplete } from '../features/restaurants/components/AddressAutocomplete';
+import { EU_COUNTRIES } from '../utils/euCountries';
 import { formatDateTime, formatPrice } from '../utils/format';
 import { dishPhoto } from '../utils/images';
 
@@ -326,19 +328,23 @@ function ReadOnlyValue({ value }: { value: string }) {
   );
 }
 
+const EMPTY_ADDRESS: AddressForm = { label: '', street: '', zip_code: '', city: '', country_code: 'FR', is_default: false };
+
 function AddressesPanel() {
   const { data: addresses, isLoading } = useMyAddresses();
   const add = useAddAddress();
   const remove = useDeleteAddress();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ label: '', street: '', zip_code: '', city: '', is_default: false });
+  const [form, setForm] = useState<AddressForm>(EMPTY_ADDRESS);
+  const [search, setSearch] = useState('');
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     add.mutate(form, {
       onSuccess: () => {
         setShowForm(false);
-        setForm({ label: '', street: '', zip_code: '', city: '', is_default: false });
+        setForm(EMPTY_ADDRESS);
+        setSearch('');
       },
     });
   };
@@ -373,14 +379,44 @@ function AddressesPanel() {
               onChange={(e) => setForm({ ...form, label: e.target.value })}
             />
           </Field>
-          <Field label="Rue" className="sm:col-span-4">
+          <Field label="Rechercher l’adresse" className="sm:col-span-4">
+            <AddressAutocomplete
+              value={search}
+              onChange={setSearch}
+              onSelect={(found) => {
+                setSearch(found.label);
+                setForm((f) => ({
+                  ...f,
+                  street: found.street,
+                  zip_code: found.postalCode,
+                  city: found.city,
+                  country_code: found.countryCode,
+                }));
+              }}
+              placeholder="Ex. 10 rue de Rennes, Paris"
+            />
+          </Field>
+          <Field label="Rue" className="sm:col-span-6">
             <Input required value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
           </Field>
           <Field label="Code postal" className="sm:col-span-2">
             <Input value={form.zip_code} onChange={(e) => setForm({ ...form, zip_code: e.target.value })} />
           </Field>
-          <Field label="Ville" className="sm:col-span-4">
+          <Field label="Ville" className="sm:col-span-2">
             <Input required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+          </Field>
+          <Field label="Pays" className="sm:col-span-2">
+            <select
+              value={form.country_code}
+              onChange={(e) => setForm({ ...form, country_code: e.target.value })}
+              className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm"
+            >
+              {EU_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </Field>
           <label className="sm:col-span-6 flex items-center gap-2 text-sm font-semibold text-neutral-600">
             <input

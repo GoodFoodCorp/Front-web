@@ -4,10 +4,11 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
-import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import { OrderStatusBadge } from '../features/orders/components/OrderStatusBadge';
-import { useRestaurantOrders, useUpdateOrderStatus } from '../features/orders/hooks/useOrders';
+import { useCancelOrder, useRestaurantOrders, useUpdateOrderStatus } from '../features/orders/hooks/useOrders';
+import { CancelOrderDialog } from '../features/orders/components/CancelOrderDialog';
+import { CANCELLED_BY, reasonLabel, STAFF_REASONS } from '../features/orders/cancellation';
 import { DeliveryStatusBadge } from '../features/delivery/components/DeliveryStatusBadge';
 import { useOrderDelivery } from '../features/delivery/hooks/useDelivery';
 import { useAuthStore } from '../store/authStore';
@@ -84,6 +85,7 @@ export function PortalOrdersPage() {
 
 function OrderRow({ order }: { order: Order }) {
   const update = useUpdateOrderStatus();
+  const cancel = useCancelOrder();
   const [refusing, setRefusing] = useState(false);
   const next = nextStep(order);
   const pickup = order.fulfillment === 'PICKUP';
@@ -123,7 +125,14 @@ function OrderRow({ order }: { order: Order }) {
         <span className="font-display text-lg font-extrabold text-brand">{formatPrice(order.total_amount_cents)}</span>
         <div className="flex gap-2">
           {CANCELLABLE.includes(order.status) && (
-            <Button variant="ghost" disabled={update.isPending} onClick={() => setRefusing(true)}>
+            <Button
+              variant="ghost"
+              disabled={update.isPending}
+              onClick={() => {
+                cancel.reset();
+                setRefusing(true);
+              }}
+            >
               Annuler
             </Button>
           )}
@@ -138,26 +147,24 @@ function OrderRow({ order }: { order: Order }) {
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{(update.error as Error).message}</p>
       )}
 
+      {order.status === 'CANCELLED' && order.cancellation && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          Annulée {CANCELLED_BY[order.cancellation.by]} : {reasonLabel(order.cancellation.reason)}
+          {order.cancellation.comment && ` — « ${order.cancellation.comment} »`}
+        </p>
+      )}
+
       {refusing && (
-        <Modal title="Annuler la commande" maxWidth="max-w-md" onClose={() => setRefusing(false)}>
-          <p className="text-sm text-neutral-600">
-            La commande #{order.id.slice(0, 8)} sera annulée et le client remboursé de{' '}
-            {formatPrice(order.amount_due_cents)}. Cette action est définitive.
-          </p>
-          <div className="mt-6 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setRefusing(false)}>
-              Retour
-            </Button>
-            <Button
-              disabled={update.isPending}
-              onClick={() =>
-                update.mutate({ id: order.id, status: 'CANCELLED' }, { onSettled: () => setRefusing(false) })
-              }
-            >
-              Annuler et rembourser
-            </Button>
-          </div>
-        </Modal>
+        <CancelOrderDialog
+          reasons={STAFF_REASONS}
+          warning={`La commande #${order.id.slice(0, 8)} sera annulée et le client remboursé de ${formatPrice(order.amount_due_cents)}. Le motif lui est communiqué.`}
+          pending={cancel.isPending}
+          error={cancel.isError ? (cancel.error as Error).message : null}
+          onClose={() => setRefusing(false)}
+          onConfirm={(reason, comment) =>
+            cancel.mutate({ id: order.id, reason, comment }, { onSuccess: () => setRefusing(false) })
+          }
+        />
       )}
     </Card>
   );
