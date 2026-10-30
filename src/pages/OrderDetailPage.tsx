@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, MapPin, Truck } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, MapPin, Store, Truck } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Spinner } from '../components/Spinner';
 import { OrderStatusBadge } from '../features/orders/components/OrderStatusBadge';
@@ -10,6 +10,8 @@ import { Button } from '../components/Button';
 import { DeliveryStatusBadge } from '../features/delivery/components/DeliveryStatusBadge';
 import { useOrderDelivery, useRateDelivery } from '../features/delivery/hooks/useDelivery';
 import { formatPrice } from '../utils/format';
+import { dishPhoto } from '../utils/images';
+import { useRestaurant } from '../features/restaurants/hooks/useRestaurants';
 import { CancelOrderDialog } from '../features/orders/components/CancelOrderDialog';
 import { CANCELLED_BY, CUSTOMER_REASONS, reasonLabel } from '../features/orders/cancellation';
 
@@ -63,6 +65,7 @@ export function OrderDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const justPaid = (location.state as { justPaid?: boolean } | null)?.justPaid;
   const { data: deliveryDetail } = useOrderDelivery(order?.id, !!order && order.status !== 'CANCELLED');
+  const { data: restaurant } = useRestaurant(order?.restaurant_id);
 
   if (isLoading) return <Spinner label="Chargement…" />;
   if (!order) return <p className="text-neutral-500">Commande introuvable.</p>;
@@ -86,10 +89,19 @@ export function OrderDetailPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-brand">
-          Commande #{order.id.slice(0, 8)}
-        </h1>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-brand">
+            Commande #{order.id.slice(0, 8)}
+          </h1>
+          <Link
+            to={`/restaurants/${order.restaurant_id}`}
+            className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-600 hover:text-brand"
+          >
+            <Store size={15} aria-hidden /> {restaurant?.name ?? 'Restaurant'}
+            {restaurant?.city && <span className="font-normal text-neutral-400">· {restaurant.city}</span>}
+          </Link>
+        </div>
         <OrderStatusBadge status={order.status} />
       </div>
 
@@ -172,9 +184,16 @@ export function OrderDetailPage() {
         </div>
         <div className="border-t border-brand/10 pt-3">
           {order.items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between py-1.5 text-sm">
-              <span>
-                <span className="font-semibold text-brand">{item.quantity}×</span> {item.menu_item_name}
+            <div key={item.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+              <span className="flex items-center gap-3">
+                <span
+                  className="h-10 w-10 shrink-0 rounded-lg bg-cover bg-center"
+                  style={{ backgroundImage: `url(${dishPhoto(item.menu_item_name)})` }}
+                  aria-hidden
+                />
+                <span>
+                  <span className="font-semibold text-brand">{item.quantity}×</span> {item.menu_item_name}
+                </span>
               </span>
               <span className="text-neutral-500">
                 {formatPrice(item.unit_price_cents * item.quantity)}
