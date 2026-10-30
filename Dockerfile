@@ -15,7 +15,10 @@ RUN npm run build
 
 FROM nginx:alpine
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# A template: the entrypoint injects the container's DNS resolver into it
+# (opt-in through NGINX_ENTRYPOINT_LOCAL_RESOLVERS).
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 8080
