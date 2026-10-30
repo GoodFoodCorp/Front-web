@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, Minus, MapPin, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
@@ -42,9 +42,11 @@ export function CartPage() {
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+  // The address the assistant checked, when its proposal was moved here.
+  const handedOver = (useLocation().state as { address?: string } | null)?.address ?? '';
   // A saved address id, or 'other' for an address typed here.
-  const [addressChoice, setAddressChoice] = useState('');
-  const [typedAddress, setTypedAddress] = useState('');
+  const [addressChoice, setAddressChoice] = useState(handedOver ? 'other' : '');
+  const [typedAddress, setTypedAddress] = useState(handedOver);
   const [fulfillment, setFulfillment] = useState<Fulfillment>('DELIVERY');
   const [tipCents, setTipCents] = useState(0);
   // A saved card's id, or NEW_CARD for a card typed for this order.
