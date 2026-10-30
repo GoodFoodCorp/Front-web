@@ -7,6 +7,8 @@ import { OAuthButtons } from '../features/auth/components/OAuthButtons';
 import { useRegister } from '../features/auth/hooks/useAuth';
 import { useWelcomeStore } from '../store/welcomeStore';
 import logo from '../assets/logo.svg';
+import { AuthCard } from '../features/auth/components/AuthCard';
+import { isWeakPassword, PASSWORD_RULE } from '../utils/password';
 
 /** Client sign-up. On success the user is logged in and sent to the storefront. */
 export function RegisterPage() {
@@ -19,16 +21,31 @@ export function RegisterPage() {
   const playWelcome = useWelcomeStore((s) => s.play);
 
   const mismatch = confirm.length > 0 && password !== confirm;
-  const weakPassword = password.length > 0 && (password.length < 8 || !/[0-9]/.test(password) || !/[a-zA-Z]/.test(password));
+  const weakPassword = password.length > 0 && isWeakPassword(password);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (mismatch || weakPassword) return;
     register.mutate(
       { email, password },
-      { onSuccess: () => playWelcome(() => navigate('/', { replace: true })) },
+      {
+        onSuccess: (result) =>
+          result.verificationRequired ? setSentTo(email) : playWelcome(() => navigate('/', { replace: true })),
+      },
     );
   };
+
+  if (sentTo) {
+    return (
+      <AuthCard title="Confirmez votre email">
+        <p className="text-sm text-neutral-600">
+          Votre compte est créé. Un lien de confirmation vient d’être envoyé à <strong>{sentTo}</strong> : ouvrez-le pour
+          activer votre compte, puis connectez-vous.
+        </p>
+      </AuthCard>
+    );
+  }
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
@@ -93,9 +110,7 @@ export function RegisterPage() {
                 placeholder="Au moins 8 caractères, lettres + chiffres"
               />
               {weakPassword && (
-                <p className="mt-1 text-xs text-red-600">
-                  Le mot de passe doit faire 8+ caractères, avec au moins une lettre et un chiffre.
-                </p>
+                <p className="mt-1 text-xs text-red-600">{PASSWORD_RULE}</p>
               )}
             </div>
             <div className="enter" style={{ '--d': '500ms' } as React.CSSProperties}>

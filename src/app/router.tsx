@@ -7,6 +7,9 @@ import { RestaurantSettingsPage } from '../pages/RestaurantSettingsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { OAuthCallbackPage } from '../pages/OAuthCallbackPage';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '../pages/ResetPasswordPage';
+import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { RestaurantsPage } from '../pages/RestaurantsPage';
 import { RestaurantMenuPage } from '../pages/RestaurantMenuPage';
@@ -44,6 +47,9 @@ export function AppRouter() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       {/* Storefront (public catalog, protected orders) */}
       <Route element={<StorefrontLayout />}>

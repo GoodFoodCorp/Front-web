@@ -33,15 +33,19 @@ export function useLogin() {
   });
 }
 
-/** Register mutation: creates a client account, then logs in automatically. */
+/** Register mutation: creates a client account, then signs in at once —
+ *  unless the email must be confirmed first (verificationRequired). */
 export function useRegister() {
   const hydrate = useHydrateSession();
   return useMutation({
     mutationFn: async ({ email, password }: Credentials) => {
-      await authApi.register(email, password);
-      return authApi.login(email, password);
+      const created = await authApi.register(email, password);
+      if (created.email_verification_required) return { verificationRequired: true as const };
+      return { verificationRequired: false as const, session: await authApi.login(email, password) };
     },
-    onSuccess: hydrate,
+    onSuccess: (result) => {
+      if (!result.verificationRequired) hydrate(result.session);
+    },
   });
 }
 

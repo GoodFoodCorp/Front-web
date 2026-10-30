@@ -9,6 +9,10 @@ import { decodeJwt } from '../store/authStore';
 import { useWelcomeStore } from '../store/welcomeStore';
 import logo from '../assets/logo.svg';
 
+// Seeded local accounts, never shown in a production build (they include the
+// head-office admin). VITE_SHOW_DEMO_ACCOUNTS=true shows them on a demo server.
+const SHOW_DEMO_ACCOUNTS = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true';
+
 const DEMO_ACCOUNTS = [
   { label: 'Client', email: 'user@example.com', password: 'User1234!' },
   { label: 'Franchisé', email: 'manager@example.com', password: 'Manager123!' },
@@ -117,6 +121,12 @@ export function LoginPage() {
               />
             </div>
 
+            <div className="enter -mt-2 text-right" style={{ '--d': '460ms' } as React.CSSProperties}>
+              <Link to="/forgot-password" className="text-xs font-semibold text-brand hover:underline">
+                Mot de passe oublié ?
+              </Link>
+            </div>
+
             {login.isError && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
                 {(login.error as Error).message}
@@ -151,6 +161,7 @@ export function LoginPage() {
             </Link>
           </p>
 
+          {SHOW_DEMO_ACCOUNTS && (
           <div className="enter mt-8 rounded-xl border border-brand/10 bg-white p-4" style={{ '--d': '720ms' } as React.CSSProperties}>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
               Comptes de démonstration
@@ -170,6 +181,7 @@ export function LoginPage() {
               ))}
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>
