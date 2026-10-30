@@ -35,6 +35,15 @@ export interface Order {
   tip_cents: number;
   estimated_minutes?: number;
   courier_id?: string;
+  cancellation?: OrderCancellation;
+}
+
+/** Who cancelled the order, and why. */
+export interface OrderCancellation {
+  by: 'CUSTOMER' | 'RESTAURANT' | 'HEAD_OFFICE';
+  reason: string;
+  comment?: string;
+  at?: string;
 }
 
 export type Fulfillment = 'DELIVERY' | 'PICKUP';

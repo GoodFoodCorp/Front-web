@@ -18,6 +18,20 @@ export interface Restaurant {
   deliveryFeeCents?: number;
   minimumOrderCents?: number;
   seatingCapacity?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+/** A street address proposed while typing (EU member states only). */
+export interface AddressSuggestion {
+  label: string;
+  street: string;
+  postalCode: string;
+  city: string;
+  country: string;
+  countryCode: string;
+  latitude: number;
+  longitude: number;
 }
 
 /** day: 0 = Sunday … 6 = Saturday; times are HH:mm, restaurant local time. */

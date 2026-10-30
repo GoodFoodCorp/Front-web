@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, MapPin, Truck } from 'lucide-react';
 import { Card } from '../components/Card';
@@ -9,6 +10,8 @@ import { Button } from '../components/Button';
 import { DeliveryStatusBadge } from '../features/delivery/components/DeliveryStatusBadge';
 import { useOrderDelivery, useRateDelivery } from '../features/delivery/hooks/useDelivery';
 import { formatPrice } from '../utils/format';
+import { CancelOrderDialog } from '../features/orders/components/CancelOrderDialog';
+import { CANCELLED_BY, CUSTOMER_REASONS, reasonLabel } from '../features/orders/cancellation';
 
 /** The customer may cancel until the kitchen starts cooking. */
 const CANCELLABLE: OrderStatus[] = ['PLACED', 'PAYMENT_PENDING', 'CONFIRMED'];
@@ -57,6 +60,7 @@ export function OrderDetailPage() {
   const location = useLocation();
   const { data: order, isLoading } = useOrder(id);
   const cancel = useCancelOrder();
+  const [cancelling, setCancelling] = useState(false);
   const justPaid = (location.state as { justPaid?: boolean } | null)?.justPaid;
   const { data: deliveryDetail } = useOrderDelivery(order?.id, !!order && order.status !== 'CANCELLED');
 
@@ -206,14 +210,40 @@ export function OrderDetailPage() {
           <span>Total</span>
           <span>{formatPrice(order.amount_due_cents)}</span>
         </div>
+        {order.status === 'CANCELLED' && order.cancellation && (
+          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p className="font-semibold">
+              Commande annulée {CANCELLED_BY[order.cancellation.by]} : {reasonLabel(order.cancellation.reason)}
+            </p>
+            {order.cancellation.comment && <p className="mt-1">« {order.cancellation.comment} »</p>}
+            <p className="mt-1 text-xs text-red-600/80">Si elle était payée, elle vous est remboursée.</p>
+          </div>
+        )}
         {CANCELLABLE.includes(order.status) && (
           <div className="border-t border-brand/10 pt-3">
-            <Button variant="ghost" disabled={cancel.isPending} onClick={() => cancel.mutate(order.id)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                cancel.reset();
+                setCancelling(true);
+              }}
+            >
               Annuler la commande
             </Button>
-            {cancel.isError && <p className="mt-2 text-sm text-red-600">{(cancel.error as Error).message}</p>}
             <p className="mt-1 text-xs text-neutral-400">Une commande payée est remboursée.</p>
           </div>
+        )}
+        {cancelling && (
+          <CancelOrderDialog
+            reasons={CUSTOMER_REASONS}
+            warning="Le restaurant n’a pas encore commencé : vous serez remboursé intégralement."
+            pending={cancel.isPending}
+            error={cancel.isError ? (cancel.error as Error).message : null}
+            onClose={() => setCancelling(false)}
+            onConfirm={(reason, comment) =>
+              cancel.mutate({ id: order.id, reason, comment }, { onSuccess: () => setCancelling(false) })
+            }
+          />
         )}
       </Card>
     </div>

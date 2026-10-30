@@ -12,6 +12,7 @@ import { useNetworkAnalytics, useRestaurantAnalytics } from '../features/analyti
 import { demoMetricsFor } from '../utils/demoMetrics';
 import { formatPrice } from '../utils/format';
 import { restaurantPhoto } from '../utils/images';
+import { AddressAutocomplete } from '../features/restaurants/components/AddressAutocomplete';
 
 /** Revenue and order counts come from analytics-service over this window. */
 const ANALYTICS_DAYS = 30;
@@ -217,7 +218,21 @@ function RestaurantCreateForm({ onDone, onCancel }: { onDone: () => void; onCanc
         <Input value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })} />
       </Field>
       <Field label="Adresse">
-        <Input required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        <AddressAutocomplete
+          required
+          value={form.address}
+          onChange={(address) => setForm({ ...form, address })}
+          onSelect={(found) =>
+            setForm({
+              ...form,
+              address: found.street,
+              // Outside France the country follows the city, so the
+              // restaurant is located in the right member state.
+              city: found.countryCode === 'FR' ? found.city : `${found.city}, ${found.country}`,
+            })
+          }
+          placeholder="ex. 12 avenue Jean Médecin, Nice"
+        />
       </Field>
       <Field label="Ville">
         <Input required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />

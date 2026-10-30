@@ -29,6 +29,8 @@ export interface Address {
   street: string;
   zip_code: string;
   city: string;
+  /** ISO 3166-1 alpha-2 (an EU member state). */
+  country_code: string;
   is_default: boolean;
   full_address: string;
 }
@@ -38,5 +40,6 @@ export interface AddressForm {
   street: string;
   zip_code: string;
   city: string;
+  country_code: string;
   is_default: boolean;
 }

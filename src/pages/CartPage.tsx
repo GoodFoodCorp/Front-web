@@ -9,9 +9,10 @@ import { selectIsLoggedIn, useAuthStore } from '../store/authStore';
 import { useCheckout } from '../features/orders/hooks/useOrders';
 import type { Fulfillment } from '../features/orders/types/order.types';
 import { usePaymentMethods } from '../features/payments/hooks/usePayments';
-import { useDeliveryQuote } from '../features/restaurants/hooks/useRestaurants';
+import { useDeliveryQuote, useRestaurant } from '../features/restaurants/hooks/useRestaurants';
 import { stripeEnabled } from '../services/stripe';
 import { useMyAddresses } from '../features/profile/hooks/useProfile';
+import { AddressAutocomplete } from '../features/restaurants/components/AddressAutocomplete';
 import { usePreviewPromoCode } from '../features/promos/hooks/usePromos';
 import { ApiError } from '../services/http';
 import { dishPhoto } from '../utils/images';
@@ -39,7 +40,9 @@ export function CartPage() {
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
-  const [manualAddress, setManualAddress] = useState('');
+  // A saved address id, or 'other' for an address typed here.
+  const [addressChoice, setAddressChoice] = useState('');
+  const [typedAddress, setTypedAddress] = useState('');
   const [fulfillment, setFulfillment] = useState<Fulfillment>('DELIVERY');
   const [tipCents, setTipCents] = useState(0);
   const [cardId, setCardId] = useState<string | null>(null);
@@ -49,7 +52,14 @@ export function CartPage() {
   const { data: cards } = usePaymentMethods();
   const selectedCard = cards?.find((c) => c.id === cardId) ?? cards?.find((c) => c.isDefault) ?? cards?.[0];
 
-  const address = defaultAddress?.full_address ?? manualAddress;
+  const choice = addressChoice || defaultAddress?.id || 'other';
+  const savedAddress = addresses?.find((a) => a.id === choice);
+  const address = savedAddress?.full_address ?? typedAddress;
+  const { data: restaurant } = useRestaurant(restaurantId ?? undefined);
+  const near =
+    restaurant?.latitude != null && restaurant?.longitude != null
+      ? { lat: restaurant.latitude, lng: restaurant.longitude }
+      : undefined;
   const isPickup = fulfillment === 'PICKUP';
   const { data: quote } = useDeliveryQuote(
     restaurantId,
@@ -235,25 +245,41 @@ export function CartPage() {
                 <p className="mt-3 flex items-center gap-1.5 text-sm text-neutral-500">
                   <Clock size={13} /> À retirer chez {restaurantName} dans environ {quote?.prepTimeMinutes ?? 20} min
                 </p>
-              ) : defaultAddress ? (
-                <div className="mt-3">
-                  <p className="font-display font-bold text-brand">{defaultAddress.label}</p>
-                  <p className="text-sm text-neutral-500">
-                    {defaultAddress.street}
-                    <br />
-                    {defaultAddress.city}, {defaultAddress.zip_code}
-                  </p>
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-neutral-400">
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {addresses?.map((a) => (
+                    <label
+                      key={a.id}
+                      className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition ${choice === a.id ? 'border-brand bg-brand-pale/50' : 'border-brand/10'}`}
+                    >
+                      <input type="radio" name="address" className="mt-1" checked={choice === a.id} onChange={() => setAddressChoice(a.id)} />
+                      <span>
+                        <span className="font-display font-bold text-brand">{a.label}</span>
+                        <span className="block text-neutral-500">{a.full_address}</span>
+                      </span>
+                    </label>
+                  ))}
+                  {addresses && addresses.length > 0 && (
+                    <label
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm transition ${choice === 'other' ? 'border-brand bg-brand-pale/50' : 'border-brand/10'}`}
+                    >
+                      <input type="radio" name="address" checked={choice === 'other'} onChange={() => setAddressChoice('other')} />
+                      <span className="font-semibold text-brand">Une autre adresse</span>
+                    </label>
+                  )}
+                  {choice === 'other' && (
+                    <AddressAutocomplete
+                      value={typedAddress}
+                      onChange={setTypedAddress}
+                      onSelect={(s) => setTypedAddress(s.label)}
+                      near={near}
+                      placeholder="Ex. 12 rue de la République, Paris"
+                    />
+                  )}
+                  <p className="flex items-center gap-1.5 text-xs text-neutral-400">
                     <Clock size={13} /> Livraison estimée : {eta}
                   </p>
                 </div>
-              ) : (
-                <input
-                  value={manualAddress}
-                  onChange={(e) => setManualAddress(e.target.value)}
-                  placeholder="12 rue de la République, 75001 Paris"
-                  className="mt-3 w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
-                />
               )}
             </div>
           </div>
