@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, RotateCcw, Send, Store, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, CreditCard, MapPin, MessageCircle, RotateCcw, Send, ShoppingCart, Store, X } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
 import { selectIsLoggedIn, useAuthStore } from '../../../store/authStore';
@@ -7,6 +8,11 @@ import { useChatStore } from '../../../store/chatStore';
 import { usePaymentMethods } from '../../payments/hooks/usePayments';
 import { useCheckout } from '../../orders/hooks/useOrders';
 import { formatPrice } from '../../../utils/format';
+import { stripeEnabled } from '../../../services/stripe';
+import { menuApi } from '../../catalog/api/menuApi';
+import { useCartStore } from '../../../store/cartStore';
+import { ChatText } from './ChatText';
+import { DishCards } from './DishCards';
 import { useChat } from '../hooks/useChat';
 import type { ChatMessage, RestaurantChoice } from '../types/chat.types';
 
@@ -69,7 +75,7 @@ export function ChatWidget() {
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
       {isOpen && (
-        <div className="flex h-[28rem] w-[22rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border border-brand/10 bg-white shadow-[var(--shadow-lift)]">
+        <div className="flex h-[34rem] max-h-[calc(100vh-7rem)] w-[24rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border border-brand/10 bg-white shadow-[var(--shadow-lift)]">
           <div className="flex items-center justify-between bg-brand px-4 py-3">
             <p className="font-display font-bold text-white">Assistant Good Food</p>
             <div className="flex items-center gap-1.5">
@@ -99,6 +105,7 @@ export function ChatWidget() {
             {messages.map((m, i) => (
               <div key={m.id}>
                 <ChatBubble role={m.role} content={m.content} />
+                {m.dishes && m.dishes.length > 0 && <DishCards dishes={m.dishes} />}
                 {m.proposal && m.proposalStatus === 'pending' && <OrderProposalCard message={m} />}
                 {/* Only the latest question is still open: older buttons would
                     answer something the conversation already moved past. */}
@@ -146,7 +153,37 @@ function OrderProposalCard({ message }: { message: ChatMessage }) {
   const checkout = useCheckout();
   const { data: cards } = usePaymentMethods();
   const defaultCard = cards?.find((c) => c.isDefault) ?? cards?.[0];
+  const navigate = useNavigate();
+  const closeChat = useChatStore((s) => s.close);
+  const cart = useCartStore();
+  const [moving, setMoving] = useState(false);
   if (!proposal) return null;
+  // With Stripe, the order is paid with a saved card here, or in the cart.
+  const payInCart = proposal.needs_card || (stripeEnabled && cards !== undefined && !defaultCard);
+  const fee = proposal.delivery_fee_cents ?? 0;
+
+  /** Puts the proposal in the cart, to pay with a new card or change it. */
+  const finishInCart = async () => {
+    setMoving(true);
+    try {
+      const menu = await menuApi.byRestaurant(proposal.restaurant_id);
+      cart.clear();
+      for (const line of proposal.items) {
+        const item = menu.find((m) => m.id === line.menu_item_id);
+        if (!item) continue;
+        for (let n = 0; n < line.quantity; n++) {
+          cart.add(item, { id: proposal.restaurant_id, name: proposal.restaurant_name ?? 'Restaurant' });
+        }
+      }
+      setProposalStatus(message.id, 'in_cart');
+      closeChat();
+      navigate('/cart', { state: { address: proposal.delivery_address } });
+    } catch {
+      addMessage({ role: 'assistant', content: "Je n'arrive pas à remplir le panier pour le moment. Réessayez dans un instant.", ui: true });
+    } finally {
+      setMoving(false);
+    }
+  };
 
   const confirm = () => {
     checkout.mutate(
@@ -204,15 +241,37 @@ function OrderProposalCard({ message }: { message: ChatMessage }) {
           </li>
         ))}
       </ul>
+      <div className="space-y-1 border-t border-brand/10 pt-1.5 text-xs text-neutral-500">
+        {proposal.estimated_minutes ? (
+          <p className="flex justify-between gap-2">
+            <span className="inline-flex items-center gap-1">
+              <Clock size={12} aria-hidden /> Livraison, environ {proposal.estimated_minutes} min
+            </span>
+            <span>{fee > 0 ? formatPrice(fee) : 'Offerte'}</span>
+          </p>
+        ) : null}
+        <p className="flex items-start gap-1">
+          <MapPin size={12} className="mt-0.5 shrink-0" aria-hidden /> {proposal.delivery_address}
+        </p>
+        <p className="flex items-center gap-1">
+          <CreditCard size={12} aria-hidden /> {payInCart ? 'Paiement par carte dans le panier' : (proposal.payment_method ?? `${defaultCard?.brand ?? 'Carte'} •••• ${defaultCard?.last4 ?? ''}`)}
+        </p>
+      </div>
       <div className="flex justify-between border-t border-brand/10 pt-1.5 text-sm font-semibold text-brand">
         <span>Total</span>
-        <span>{formatPrice(proposal.total_amount_cents)}</span>
+        <span>{formatPrice(proposal.total_amount_cents + fee)}</span>
       </div>
       {checkout.isError && <p className="text-xs text-red-600">{(checkout.error as Error).message}</p>}
       <div className="flex gap-2">
-        <Button type="button" onClick={confirm} disabled={checkout.isPending} className="flex-1 py-1.5 text-xs">
-          {checkout.isPending ? 'Commande en cours…' : 'Confirmer la commande'}
-        </Button>
+        {payInCart ? (
+          <Button type="button" onClick={finishInCart} disabled={moving} className="flex-1 py-1.5 text-xs">
+            <ShoppingCart size={14} /> {moving ? 'Préparation…' : 'Payer dans le panier'}
+          </Button>
+        ) : (
+          <Button type="button" onClick={confirm} disabled={checkout.isPending} className="flex-1 py-1.5 text-xs">
+            {checkout.isPending ? 'Paiement en cours…' : 'Confirmer et payer'}
+          </Button>
+        )}
         <Button
           type="button"
           onClick={cancel}
@@ -281,13 +340,13 @@ function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: st
   const isUser = role === 'user';
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <p
-        className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${
-          isUser ? 'bg-brand text-white' : 'bg-brand-pale text-neutral-700'
+      <div
+        className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${
+          isUser ? 'whitespace-pre-wrap bg-brand text-white' : 'bg-brand-pale text-neutral-700'
         }`}
       >
-        {content}
-      </p>
+        {isUser ? content : <ChatText content={content} />}
+      </div>
     </div>
   );
 }

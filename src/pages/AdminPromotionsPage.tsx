@@ -22,6 +22,7 @@ const EMPTY_FORM: PromoCodeForm = {
   min_order_amount_cents: 0,
   max_redemptions: null,
   is_active: true,
+  once_per_customer: false,
 };
 
 export function AdminPromotionsPage() {
@@ -104,6 +105,7 @@ export function AdminPromotionsPage() {
                     <td className="px-5 py-3 text-neutral-500">
                       {p.redemptions_used}
                       {p.max_redemptions != null ? ` / ${p.max_redemptions}` : ''}
+                      {p.once_per_customer && <span className="block text-xs">1 par client</span>}
                     </td>
                     <td className="px-5 py-3">
                       <Badge tone={p.is_active ? 'green' : 'gray'}>{p.is_active ? 'Actif' : 'Inactif'}</Badge>
@@ -166,6 +168,7 @@ function PromoForm({
           max_redemptions: promo.max_redemptions,
           expires_at: promo.expires_at,
           is_active: promo.is_active,
+          once_per_customer: promo.once_per_customer,
         }
       : EMPTY_FORM,
   );
@@ -229,6 +232,14 @@ function PromoForm({
           onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
         />
         Code actif
+      </label>
+      <label className="flex items-center gap-2 text-sm font-semibold text-neutral-600 sm:col-span-2">
+        <input
+          type="checkbox"
+          checked={form.once_per_customer}
+          onChange={(e) => setForm({ ...form, once_per_customer: e.target.checked })}
+        />
+        Une seule utilisation par client (offre de bienvenue)
       </label>
       {error && (
         <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">

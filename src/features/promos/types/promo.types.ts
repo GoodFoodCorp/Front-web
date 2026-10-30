@@ -9,6 +9,8 @@ export interface PromoCode {
   starts_at: string;
   expires_at?: string;
   is_active: boolean;
+  /** Each customer may use it once (welcome offer). */
+  once_per_customer: boolean;
   created_at: string;
 }
 
@@ -20,6 +22,7 @@ export interface PromoCodeForm {
   max_redemptions: number | null;
   expires_at?: string;
   is_active: boolean;
+  once_per_customer: boolean;
 }
 
 export interface PromoPreview {

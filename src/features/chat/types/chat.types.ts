@@ -14,10 +14,28 @@ export interface ProposedItem {
  *  itself. */
 export interface OrderProposal {
   restaurant_id: string;
+  restaurant_name?: string;
   items: ProposedItem[];
+  /** Checked with the restaurant: in its zone, open, above its minimum. */
   delivery_address: string;
+  /** The dishes only. */
   total_amount_cents: number;
+  delivery_fee_cents?: number;
+  estimated_minutes?: number;
   payment_method?: string;
+  /** No saved card: the customer pays in the cart. */
+  needs_card?: boolean;
+}
+
+/** A real menu item the assistant talks about, shown as a card. */
+export interface DishCard {
+  id: string;
+  restaurant_id: string;
+  restaurant_name?: string;
+  name: string;
+  description?: string;
+  category?: string;
+  price_cents: number;
 }
 
 /** A restaurant the customer can pick with one click when the assistant asks
@@ -28,7 +46,8 @@ export interface RestaurantChoice {
   city?: string;
 }
 
-export type ProposalStatus = 'pending' | 'confirmed' | 'cancelled';
+/** in_cart: the customer took the proposal to the cart to finish there. */
+export type ProposalStatus = 'pending' | 'confirmed' | 'cancelled' | 'in_cart';
 
 export interface ChatMessage {
   id: string;
@@ -37,14 +56,24 @@ export interface ChatMessage {
   proposal?: OrderProposal;
   proposalStatus?: ProposalStatus;
   choices?: RestaurantChoice[];
+  dishes?: DishCard[];
+  /** assistant-service's signature of this reply: without it, the reply is
+   *  not taken back as part of the conversation. */
+  signature?: string;
   /** Written by the interface itself (order confirmed, error…), not by the
    *  assistant: shown to the customer but never sent back to the model, which
    *  would otherwise copy it. */
   ui?: boolean;
 }
 
+export interface HistoryMessage {
+  role: ChatRole;
+  content: string;
+  signature?: string;
+}
+
 export interface SendMessagePayload {
-  messages: { role: ChatRole; content: string }[];
+  messages: HistoryMessage[];
   restaurant_id?: string;
 }
 
@@ -53,4 +82,6 @@ export interface SendMessageResponse {
   content: string;
   proposal?: OrderProposal;
   choices?: RestaurantChoice[];
+  dishes?: DishCard[];
+  signature?: string;
 }
