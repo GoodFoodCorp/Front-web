@@ -15,7 +15,8 @@ const SHOW_DEMO_ACCOUNTS = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO
 
 const DEMO_ACCOUNTS = [
   { label: 'Client', email: 'user@example.com', password: 'User1234!' },
-  { label: 'Franchisé', email: 'manager@example.com', password: 'Manager123!' },
+  { label: 'Franchisé République', email: 'manager@example.com', password: 'Manager123!' },
+  { label: 'Franchisé Montparnasse', email: 'manager2@example.com', password: 'Manager123!' },
   { label: 'Siège', email: 'admin@example.com', password: 'Admin123!' },
   { label: 'Livreur', email: 'livreur@example.com', password: 'Livreur123!' },
 ];
