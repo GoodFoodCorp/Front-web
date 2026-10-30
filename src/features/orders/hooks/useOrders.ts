@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ordersApi } from '../api/ordersApi';
 import { ApiError } from '../../../services/http';
 import { getStripe, stripeEnabled } from '../../../services/stripe';
-import type { CheckoutRequest, Order } from '../types/order.types';
+import type { CheckoutRequest, Order, OrderStatus } from '../types/order.types';
 import { BACKOFFICE_REFETCH_MS } from '../../../config/app.config';
 import { useCartStore } from '../../../store/cartStore';
 
@@ -18,10 +18,10 @@ export function useOrder(id: string | undefined) {
   });
 }
 
-export function useRestaurantOrders(restaurantId: string | null) {
+export function useRestaurantOrders(restaurantId: string | null, statuses: OrderStatus[] = []) {
   return useQuery({
-    queryKey: ['orders', 'restaurant', restaurantId],
-    queryFn: () => ordersApi.listByRestaurant(restaurantId!),
+    queryKey: ['orders', 'restaurant', restaurantId, statuses],
+    queryFn: () => ordersApi.listByRestaurant(restaurantId!, statuses),
     enabled: !!restaurantId,
     refetchInterval: BACKOFFICE_REFETCH_MS,
   });

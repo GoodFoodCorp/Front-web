@@ -1,5 +1,5 @@
 import { http } from '../../../services/http';
-import type { CreateOrderPayload, Order, PaymentIntent } from '../types/order.types';
+import type { CreateOrderPayload, Order, OrderStatus, PaymentIntent } from '../types/order.types';
 
 export const ordersApi = {
   create: (payload: CreateOrderPayload, idempotencyKey: string) =>
@@ -16,8 +16,11 @@ export const ordersApi = {
   /** The customer cancels their order (before the kitchen starts). */
   cancel: (id: string) => http<Order>(`/api/orders/${id}/cancel`, { method: 'POST' }),
 
-  listByRestaurant: (restaurantId: string) =>
-    http<Order[]>(`/api/orders?restaurantId=${restaurantId}`),
+  /** A restaurant's orders, newest first, optionally only in some statuses. */
+  listByRestaurant: (restaurantId: string, statuses: OrderStatus[] = []) =>
+    http<Order[]>(
+      `/api/orders?restaurantId=${restaurantId}&limit=100${statuses.length ? `&status=${statuses.join(',')}` : ''}`,
+    ),
 
   createPaymentIntent: (id: string, paymentMethodId?: string) =>
     http<PaymentIntent>(`/api/orders/${id}/payment-intent`, {
