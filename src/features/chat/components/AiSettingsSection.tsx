@@ -47,6 +47,8 @@ export function AiSettingsSection() {
   const keyKept = sameProvider && settings.has_key;
   const needsKey = !!preset?.needs_key && !keyKept && !apiKey.trim();
   const unknownDemo = provider === 'demo';
+  // Azure has no default: the address is the resource's, the model its deployment.
+  const azure = provider === 'azure';
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +83,7 @@ export function AiSettingsSection() {
             <option value="demo">Démo hors-ligne (aucune IA)</option>
             {presets.map((p) => (
               <option key={p.name} value={p.name}>
-                {p.name}
+                {p.name === 'azure' ? 'azure (Azure OpenAI / AI Foundry)' : p.name}
               </option>
             ))}
           </select>
@@ -92,7 +94,7 @@ export function AiSettingsSection() {
           <Input
             value={model}
             disabled={unknownDemo}
-            placeholder={preset?.model || 'ex. claude-haiku-5-5'}
+            placeholder={azure ? 'nom du déploiement, ex. gpt-5-mini' : preset?.model || 'ex. claude-haiku-5-5'}
             onChange={(e) => setModel(e.target.value)}
           />
         </label>
@@ -114,7 +116,7 @@ export function AiSettingsSection() {
           <Input
             value={baseUrl}
             disabled={unknownDemo}
-            placeholder={preset?.base_url || 'https://…/v1'}
+            placeholder={azure ? 'https://<ressource>.services.ai.azure.com' : preset?.base_url || 'https://…/v1'}
             onChange={(e) => setBaseUrl(e.target.value)}
           />
         </label>
