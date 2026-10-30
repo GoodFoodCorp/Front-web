@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import { Bot, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
+import { Select } from '../../../components/Select';
 import { Spinner } from '../../../components/Spinner';
 import { useAiSettings, useResetAiSettings, useSaveAiSettings, useTestAiSettings } from '../hooks/useAiSettings';
 
-const SELECT_STYLE =
-  'w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20';
 
 const FIELD_LABEL = 'mb-1.5 block text-xs font-semibold text-neutral-600';
 
@@ -70,23 +69,24 @@ export function AiSettingsSection() {
       <form onSubmit={submit} className="mt-4 grid gap-4 md:grid-cols-2">
         <label className="block">
           <span className={FIELD_LABEL}>Fournisseur</span>
-          <select
-            className={SELECT_STYLE}
+          <Select
+            aria-label="Fournisseur"
             value={provider}
-            onChange={(e) => {
-              setProvider(e.target.value);
+            onChange={(v) => {
+              setProvider(v);
               setModel('');
               setBaseUrl('');
               setApiKey('');
             }}
-          >
-            <option value="demo">Démo hors-ligne (aucune IA)</option>
-            {presets.map((p) => (
-              <option key={p.name} value={p.name}>
-                {p.name === 'azure' ? 'azure (Azure OpenAI / AI Foundry)' : p.name}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: 'demo', label: 'Démo hors-ligne (aucune IA)' },
+              ...presets.map((p) => ({
+                value: p.name,
+                label: p.name === 'azure' ? 'azure (Azure OpenAI / AI Foundry)' : p.name,
+                hint: p.needs_key ? 'Clé API requise' : 'Local, sans clé',
+              })),
+            ]}
+          />
         </label>
 
         <label className="block">

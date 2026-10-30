@@ -4,6 +4,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
 import { Modal } from '../components/Modal';
 import { RecipeEditor, validateRecipe } from '../components/RecipeEditor';
 import type { StockStatus } from '../components/RecipeEditor';
@@ -150,16 +151,13 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select
+        <Select
+          aria-label="Catégorie"
+          className="w-56"
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
-        >
-          <option>{ALL}</option>
-          {categoryNames.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
+          onChange={setCategory}
+          options={[ALL, ...categoryNames].map((c) => ({ value: c, label: c }))}
+        />
         <Button
           className="ml-auto"
           onClick={() => {
@@ -516,15 +514,12 @@ function DishFormFields({
             <Input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} />
           </Field>
           <Field label="Catégorie" className="sm:col-span-7">
-            <select
-              className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
+            <Select
+              aria-label="Catégorie"
               value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-            >
-              {categories.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
+              onChange={(v) => setForm({ ...form, category: v })}
+              options={categories.map((c) => ({ value: c, label: c }))}
+            />
           </Field>
           <Field label="Prix (€)" className="sm:col-span-5">
             <Input

@@ -4,6 +4,7 @@ import { Badge, type BadgeTone } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
 import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import { useAllRestaurants } from '../features/restaurants/hooks/useRestaurants';
@@ -142,19 +143,13 @@ function AccessForm({ member, onClose }: { member: StaffMember; onClose: () => v
           <label htmlFor="staff-role" className="mb-1.5 block text-sm font-semibold text-neutral-700">
             Rôle
           </label>
-          <select
+          <Select
             id="staff-role"
             value={role}
             disabled={isMe}
-            onChange={(e) => setRole(e.target.value as StaffRole)}
-            className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm"
-          >
-            {(Object.keys(ROLES) as StaffRole[]).map((r) => (
-              <option key={r} value={r}>
-                {ROLES[r].label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setRole(v as StaffRole)}
+            options={(Object.keys(ROLES) as StaffRole[]).map((r) => ({ value: r, label: ROLES[r].label }))}
+          />
           {isMe && <p className="mt-1 text-xs text-neutral-400">Vous ne pouvez pas modifier votre propre rôle.</p>}
         </div>
         {role === 'manager' && (
@@ -162,22 +157,13 @@ function AccessForm({ member, onClose }: { member: StaffMember; onClose: () => v
             <label htmlFor="staff-restaurant" className="mb-1.5 block text-sm font-semibold text-neutral-700">
               Restaurant
             </label>
-            <select
+            <Select
               id="staff-restaurant"
-              required
               value={restaurantId}
-              onChange={(e) => setRestaurantId(e.target.value)}
-              className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm"
-            >
-              <option value="" disabled>
-                Choisir un restaurant
-              </option>
-              {restaurants?.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} — {r.city}
-                </option>
-              ))}
-            </select>
+              onChange={setRestaurantId}
+              placeholder="Choisir un restaurant"
+              options={(restaurants ?? []).map((r) => ({ value: r.id, label: r.name, hint: r.city }))}
+            />
           </div>
         )}
         <p className="text-xs text-neutral-400">

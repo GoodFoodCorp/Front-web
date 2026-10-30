@@ -5,6 +5,7 @@ import { Calendar } from '../components/Calendar';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
 import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import { TimeSlotPicker } from '../components/TimeSlotPicker';
@@ -132,18 +133,13 @@ function BookingForm({ onDone }: { onDone: () => void }) {
     <form onSubmit={submit} className="space-y-3">
       <div>
         <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Restaurant</label>
-        <select
+        <Select
+          aria-label="Restaurant"
           value={form.restaurantId}
-          onChange={(e) => setForm({ ...form, restaurantId: e.target.value })}
-          className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-        >
-          <option value="">Choisir un restaurant…</option>
-          {restaurants?.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setForm({ ...form, restaurantId: v })}
+          placeholder="Choisir un restaurant…"
+          options={(restaurants ?? []).map((r) => ({ value: r.id, label: r.name, hint: r.city }))}
+        />
       </div>
       <div>
         <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Nom</label>

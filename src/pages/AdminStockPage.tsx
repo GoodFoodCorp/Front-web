@@ -4,6 +4,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
 import { Spinner } from '../components/Spinner';
 import { useAllRestaurants } from '../features/restaurants/hooks/useRestaurants';
 import { NEXT_STATUS, STATUS_META } from '../features/stock/replenishmentStatus';
@@ -101,18 +102,13 @@ export function AdminStockPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <select
+          <Select
+            aria-label="Restaurant"
+            className="w-64"
             value={restaurantId}
-            onChange={(e) => setRestaurantId(e.target.value)}
-            className="rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
-          >
-            <option value="">Tous les restaurants</option>
-            {restaurantList.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+            onChange={setRestaurantId}
+            options={[{ value: '', label: 'Tous les restaurants' }, ...restaurantList.map((r) => ({ value: r.id, label: r.name }))]}
+          />
           <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-neutral-700">
             <input type="checkbox" checked={onlyAlerts} onChange={(e) => setOnlyAlerts(e.target.checked)} />
             Alertes uniquement

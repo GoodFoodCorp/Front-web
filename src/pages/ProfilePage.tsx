@@ -21,6 +21,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
 import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import { Switch } from '../components/Switch';
@@ -406,17 +407,12 @@ function AddressesPanel() {
             <Input required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
           </Field>
           <Field label="Pays" className="sm:col-span-2">
-            <select
+            <Select
+              aria-label="Pays"
               value={form.country_code}
-              onChange={(e) => setForm({ ...form, country_code: e.target.value })}
-              className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm"
-            >
-              {EU_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setForm({ ...form, country_code: v })}
+              options={EU_COUNTRIES.map((c) => ({ value: c.code, label: c.name }))}
+            />
           </Field>
           <label className="sm:col-span-6 flex items-center gap-2 text-sm font-semibold text-neutral-600">
             <input
