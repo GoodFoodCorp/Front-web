@@ -84,4 +84,24 @@ describe('http', () => {
     expect(stored).toContain('u1');
     expect(stored).not.toContain('accessToken');
   });
+
+  it('reads the error message whatever the service stack', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(json(400, { error: 'IBAN invalide' }))
+      .mockResolvedValueOnce(json(403, { detail: 'admin only' }))
+      .mockResolvedValueOnce(json(400, { title: 'One or more validation errors occurred.' }));
+
+    await expect(http('/api/a')).rejects.toMatchObject({ status: 400, message: 'IBAN invalide' });
+    await expect(http('/api/b')).rejects.toMatchObject({ status: 403, message: 'admin only' });
+    await expect(http('/api/c')).rejects.toMatchObject({ message: 'One or more validation errors occurred.' });
+  });
+
+  it('survives a non-JSON error page from the gateway', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('<html>502 Bad Gateway</html>', { status: 502 }))
+      .mockResolvedValueOnce(new Response('Limit exceeded', { status: 429 }));
+
+    await expect(http('/api/orders')).rejects.toMatchObject({ status: 502, message: expect.stringContaining('indisponible') });
+    await expect(http('/api/auth/login')).rejects.toMatchObject({ status: 429, message: expect.stringContaining('Trop de tentatives') });
+  });
 });
