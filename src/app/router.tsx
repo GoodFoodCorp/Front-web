@@ -29,7 +29,8 @@ import { AdminFranchisesPage } from '../pages/AdminFranchisesPage';
 import { AdminPromotionsPage } from '../pages/AdminPromotionsPage';
 import { AdminSettingsPage } from '../pages/AdminSettingsPage';
 import { AdminStockPage } from '../pages/AdminStockPage';
-import { ComingSoonPage } from '../pages/ComingSoonPage';
+import { AdminStaffPage } from '../pages/AdminStaffPage';
+import { AdminPayoutsPage } from '../pages/AdminPayoutsPage';
 import { AboutPage } from '../pages/AboutPage';
 import { CareersPage } from '../pages/CareersPage';
 import { ContactPage } from '../pages/ContactPage';
@@ -142,7 +143,8 @@ export function AppRouter() {
         <Route path="stock" element={<AdminStockPage />} />
         <Route path="menu" element={<CatalogManagementPage />} />
         <Route path="promotions" element={<AdminPromotionsPage />} />
-        <Route path="personnel" element={<ComingSoonPage title="Personnel" subtitle="Effectifs du réseau" />} />
+        <Route path="personnel" element={<AdminStaffPage />} />
+        <Route path="payouts" element={<AdminPayoutsPage />} />
         <Route path="franchises" element={<AdminFranchisesPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />
       </Route>
