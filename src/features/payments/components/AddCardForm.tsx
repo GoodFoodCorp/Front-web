@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { StripeCardElement } from '@stripe/stripe-js';
 import { Button } from '../../../components/Button';
-import { DEMO_TEST_CARDS, getStripe, stripeEnabled } from '../../../services/stripe';
+import { CARD_STYLE, DEMO_TEST_CARDS, getStripe, stripeEnabled, stripeErrorMessage } from '../../../services/stripe';
 import { paymentsApi } from '../api/paymentsApi';
 import { useAddPaymentMethod } from '../hooks/usePayments';
 
@@ -25,7 +25,7 @@ export function AddCardForm({ onDone, onCancel }: { onDone: () => void; onCancel
     let card: StripeCardElement | null = null;
     void getStripe().then((stripe) => {
       if (!stripe || !mountRef.current) return;
-      card = stripe.elements().create('card', { hidePostalCode: true });
+      card = stripe.elements({ locale: 'fr' }).create('card', { hidePostalCode: true, style: CARD_STYLE });
       card.mount(mountRef.current);
       cardRef.current = card;
     });
@@ -44,7 +44,7 @@ export function AddCardForm({ onDone, onCancel }: { onDone: () => void; onCancel
         const { client_secret } = await paymentsApi.createCardSetup();
         const result = await stripe.confirmCardSetup(client_secret, { payment_method: { card: cardRef.current } });
         if (result.error || !result.setupIntent?.payment_method) {
-          throw new Error(result.error?.message ?? 'Carte refusée.');
+          throw new Error(stripeErrorMessage(result.error, 'Carte refusée.'));
         }
         paymentMethodId = String(result.setupIntent.payment_method);
       }

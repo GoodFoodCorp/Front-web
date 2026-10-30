@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ordersApi } from '../api/ordersApi';
 import { ApiError } from '../../../services/http';
-import { getStripe, stripeEnabled } from '../../../services/stripe';
+import { getStripe, stripeEnabled, stripeErrorMessage } from '../../../services/stripe';
 import type { CheckoutRequest, Order, OrderStatus } from '../types/order.types';
 import { BACKOFFICE_REFETCH_MS } from '../../../config/app.config';
 import { useCartStore } from '../../../store/cartStore';
@@ -54,14 +54,17 @@ export function useCheckout() {
   const clearCart = useCartStore((s) => s.clear);
 
   return useMutation({
-    mutationFn: async ({ order: payload, paymentMethodId, idempotencyKey }: CheckoutRequest) => {
+    mutationFn: async ({ order: payload, paymentMethodId, newCard, idempotencyKey }: CheckoutRequest) => {
       const order = await ordersApi.create(payload, idempotencyKey);
-      const intent = await ordersApi.createPaymentIntent(order.id, paymentMethodId);
+      // A typed card is given to Stripe in the browser: the intent has none.
+      const intent = await ordersApi.createPaymentIntent(order.id, newCard ? undefined : paymentMethodId);
       if (stripeEnabled) {
         const stripe = await getStripe();
         if (!stripe || !intent.client_secret) throw new Error('Paiement indisponible pour le moment.');
-        const result = await stripe.confirmCardPayment(intent.client_secret);
-        if (result.error) throw new Error(result.error.message ?? 'Paiement refusé.');
+        const result = newCard
+          ? await stripe.confirmCardPayment(intent.client_secret, { payment_method: { card: newCard } })
+          : await stripe.confirmCardPayment(intent.client_secret);
+        if (result.error) throw new Error(stripeErrorMessage(result.error));
       }
       return confirmWhenPaid(order.id);
     },

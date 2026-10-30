@@ -9,6 +9,8 @@ import { selectIsLoggedIn, useAuthStore } from '../store/authStore';
 import { useCheckout } from '../features/orders/hooks/useOrders';
 import type { Fulfillment } from '../features/orders/types/order.types';
 import { usePaymentMethods } from '../features/payments/hooks/usePayments';
+import { NEW_CARD, PaymentPicker } from '../features/payments/components/PaymentPicker';
+import type { StripeCardElement } from '@stripe/stripe-js';
 import { useDeliveryQuote, useRestaurant } from '../features/restaurants/hooks/useRestaurants';
 import { stripeEnabled } from '../services/stripe';
 import { useMyAddresses } from '../features/profile/hooks/useProfile';
@@ -45,12 +47,18 @@ export function CartPage() {
   const [typedAddress, setTypedAddress] = useState('');
   const [fulfillment, setFulfillment] = useState<Fulfillment>('DELIVERY');
   const [tipCents, setTipCents] = useState(0);
+  // A saved card's id, or NEW_CARD for a card typed for this order.
   const [cardId, setCardId] = useState<string | null>(null);
+  const [newCard, setNewCard] = useState<StripeCardElement | null>(null);
+  const [newCardComplete, setNewCardComplete] = useState(false);
   // One key per checkout attempt: a double click or a retry never places two orders.
   const idempotencyKey = useRef(crypto.randomUUID());
 
   const { data: cards } = usePaymentMethods();
-  const selectedCard = cards?.find((c) => c.id === cardId) ?? cards?.find((c) => c.isDefault) ?? cards?.[0];
+  const payWithNewCard = stripeEnabled && (cardId === NEW_CARD || (cards !== undefined && cards.length === 0));
+  const selectedCard = payWithNewCard
+    ? undefined
+    : (cards?.find((c) => c.id === cardId) ?? cards?.find((c) => c.isDefault) ?? cards?.[0]);
 
   const choice = addressChoice || defaultAddress?.id || 'other';
   const savedAddress = addresses?.find((a) => a.id === choice);
@@ -87,7 +95,13 @@ export function CartPage() {
         },
         onError: (err) => {
           setAppliedPromo(null);
-          setPromoError(err instanceof ApiError ? err.message : 'Code promo invalide.');
+          setPromoError(
+            err instanceof ApiError && err.status === 404
+              ? "Ce code promo n'existe pas."
+              : err instanceof ApiError
+                ? err.message
+                : 'Code promo invalide.',
+          );
         },
       },
     );
@@ -115,6 +129,7 @@ export function CartPage() {
           tip_cents: tipCents,
         },
         paymentMethodId: selectedCard?.id,
+        newCard: payWithNewCard ? (newCard ?? undefined) : undefined,
         idempotencyKey: idempotencyKey.current,
       },
       {
@@ -137,7 +152,7 @@ export function CartPage() {
     );
   }
 
-  const needsCard = stripeEnabled && !selectedCard;
+  const needsCard = stripeEnabled && (payWithNewCard ? !newCard || !newCardComplete : !selectedCard);
   const canOrder =
     (isPickup || address.trim().length > 3) && !refusal && !belowMinimum && !needsCard && !checkout.isPending;
   const eta = quote ? `${quote.estimatedDeliveryMinutes} min` : '30-40 min';
@@ -354,25 +369,18 @@ export function CartPage() {
                 <span>{formatPrice(total)}</span>
               </div>
 
-              {cards && cards.length > 0 && (
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Carte</label>
-                  <select
-                    value={selectedCard?.id ?? ''}
-                    onChange={(e) => setCardId(e.target.value)}
-                    className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
-                  >
-                    {cards.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.brand} •••• {c.last4}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {stripeEnabled && cards && (
+                <PaymentPicker
+                  cards={cards}
+                  value={payWithNewCard ? NEW_CARD : (selectedCard?.id ?? NEW_CARD)}
+                  onChange={setCardId}
+                  onNewCard={setNewCard}
+                  onNewCardComplete={setNewCardComplete}
+                />
               )}
               {needsCard && (
                 <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                  Ajoutez une carte dans votre profil pour payer.
+                  Saisissez votre carte pour payer.
                 </p>
               )}
               {refusal && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{refusal}</p>}

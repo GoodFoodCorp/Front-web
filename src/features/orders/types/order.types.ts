@@ -1,3 +1,5 @@
+import type { StripeCardElement } from '@stripe/stripe-js';
+
 export type OrderStatus =
   | 'PLACED'
   | 'PAYMENT_PENDING'
@@ -75,8 +77,10 @@ export interface CreateOrderPayload {
 /** What the customer chose at checkout besides the order itself. */
 export interface CheckoutRequest {
   order: CreateOrderPayload;
-  /** One of the customer's saved cards (required with real Stripe). */
+  /** One of the customer's saved cards… */
   paymentMethodId?: string;
+  /** …or a card typed now, for this payment only (Stripe). */
+  newCard?: StripeCardElement;
   /** Same key for every retry of one checkout: never two orders. */
   idempotencyKey: string;
 }
