@@ -9,7 +9,7 @@ import { OrdersTrendChart, RevenueTrendChart } from '../features/analytics/compo
 import { TopList } from '../features/analytics/components/TopList';
 import { useRestaurantAnalytics } from '../features/analytics/hooks/useAnalytics';
 import { useStocks } from '../features/stock/hooks/useStock';
-import { formatCancellationRate, formatPrice } from '../utils/format';
+import { formatCancellationRate, formatCount, formatPrice, mergeDishes, plural } from '../utils/format';
 
 /** Orders the kitchen still has to handle. */
 const IN_PROGRESS_STATUSES = ['CONFIRMED', 'IN_PREPARATION'];
@@ -47,7 +47,7 @@ export function DashboardPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatTile index={0} label="Total des ventes" value={formatPrice(metrics.revenueCents)} icon={TrendingUp} />
-            <StatTile index={1} label="Total de commandes" value={String(metrics.ordersCount)} icon={ScrollText} />
+            <StatTile index={1} label="Total de commandes" value={formatCount(metrics.ordersCount)} icon={ScrollText} />
             <StatTile
               index={2}
               label="Prix moyen d'un panier"
@@ -57,7 +57,7 @@ export function DashboardPage() {
             <StatTile
               index={3}
               label="Commandes annulées"
-              value={String(metrics.cancelledCount)}
+              value={formatCount(metrics.cancelledCount)}
               hint={formatCancellationRate(metrics.cancelledCount, metrics.ordersCount)}
               icon={Ban}
             />
@@ -74,10 +74,10 @@ export function DashboardPage() {
               subtitle="Vos plats les plus vendus sur la période"
               emptyIcon="🍽️"
               emptyTitle="Aucun plat vendu sur la période"
-              rows={metrics.topDishes.map((d) => ({
-                id: d.menuItemId,
+              rows={mergeDishes(metrics.topDishes).map((d) => ({
+                id: d.name,
                 label: d.name,
-                caption: `${d.quantity} vendus`,
+                caption: plural(d.quantity, 'vendu'),
                 value: d.quantity,
               }))}
             />
@@ -104,8 +104,8 @@ export function DashboardPage() {
                   <h2 className="font-display font-bold text-brand">Commandes à préparer</h2>
                 </div>
                 <p className="text-sm text-neutral-600">
-                  <span className="font-display text-2xl font-extrabold text-brand">{inProgress}</span> commande(s) en
-                  cours de traitement.
+                  <span className="font-display text-2xl font-extrabold text-brand">{formatCount(inProgress)}</span>{' '}
+                  {inProgress > 1 ? 'commandes payées attendent' : 'commande payée attend'} la cuisine.
                 </p>
               </div>
             </div>

@@ -7,7 +7,7 @@ import { PeriodPicker } from '../features/analytics/components/PeriodPicker';
 import { OrdersTrendChart, RevenueTrendChart } from '../features/analytics/components/TrendChart';
 import { TopList } from '../features/analytics/components/TopList';
 import { useNetworkAnalytics } from '../features/analytics/hooks/useAnalytics';
-import { formatCancellationRate, formatPrice } from '../utils/format';
+import { formatCancellationRate, formatCount, formatPrice, mergeDishes, plural } from '../utils/format';
 
 /** Head office: the whole network, computed by analytics-service. */
 export function AdminDashboardPage() {
@@ -32,12 +32,12 @@ export function AdminDashboardPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatTile index={0} label="Chiffre d'affaires" value={formatPrice(metrics.revenueCents)} icon={TrendingUp} />
-            <StatTile index={1} label="Commandes" value={String(metrics.ordersCount)} icon={ScrollText} />
+            <StatTile index={1} label="Commandes" value={formatCount(metrics.ordersCount)} icon={ScrollText} />
             <StatTile index={2} label="Panier moyen" value={formatPrice(metrics.averageBasketCents)} icon={Receipt} />
             <StatTile
               index={3}
               label="Commandes annulées"
-              value={String(metrics.cancelledCount)}
+              value={formatCount(metrics.cancelledCount)}
               hint={formatCancellationRate(metrics.cancelledCount, metrics.ordersCount)}
               icon={Ban}
             />
@@ -66,10 +66,10 @@ export function AdminDashboardPage() {
               subtitle="Par quantité vendue sur la période"
               emptyIcon="🍽️"
               emptyTitle="Aucun plat vendu sur la période"
-              rows={metrics.topDishes.map((d) => ({
-                id: d.menuItemId,
+              rows={mergeDishes(metrics.topDishes).map((d) => ({
+                id: d.name,
                 label: d.name,
-                caption: `${d.quantity} vendus`,
+                caption: plural(d.quantity, 'vendu'),
                 value: d.quantity,
               }))}
             />

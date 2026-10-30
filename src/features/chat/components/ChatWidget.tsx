@@ -22,6 +22,8 @@ const GREETING = "Bonjour ! Je suis l'assistant Good Food. Posez-moi une questio
  *  customers: the assistant's value is answering about *their* orders. */
 export function ChatWidget() {
   const isLoggedIn = useAuthStore(selectIsLoggedIn);
+  // The assistant answers customers about their orders: not the staff, not couriers.
+  const isCustomer = useAuthStore((s) => s.roles.length === 0 || s.roles.includes('user'));
   const userId = useAuthStore((s) => s.userId);
   const claimFor = useChatStore((s) => s.claimFor);
   // A conversation is private to the account that had it: switching account (or
@@ -63,7 +65,7 @@ export function ChatWidget() {
     if (isOpen) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [isOpen, messages, isPending]);
 
-  if (!isLoggedIn) return null;
+  if (!isLoggedIn || !isCustomer) return null;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();

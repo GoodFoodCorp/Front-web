@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { selectIsLoggedIn, useAuthStore } from '../../../store/authStore';
 import { paymentsApi } from '../api/paymentsApi';
 import type { AddPaymentMethodForm } from '../types/payment.types';
 
 export function usePaymentHistory() {
-  return useQuery({ queryKey: ['payments', 'history'], queryFn: paymentsApi.history });
+  const isLoggedIn = useAuthStore(selectIsLoggedIn);
+  return useQuery({ queryKey: ['payments', 'history'], queryFn: paymentsApi.history, enabled: isLoggedIn });
 }
 
 export function usePaymentMethods() {
-  return useQuery({ queryKey: ['payments', 'methods'], queryFn: paymentsApi.listMethods });
+  const isLoggedIn = useAuthStore(selectIsLoggedIn);
+  return useQuery({ queryKey: ['payments', 'methods'], queryFn: paymentsApi.listMethods, enabled: isLoggedIn });
 }
 
 export function useAddPaymentMethod() {

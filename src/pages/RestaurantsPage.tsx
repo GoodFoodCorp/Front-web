@@ -124,8 +124,8 @@ export function RestaurantsPage() {
             <OfferCard
               tone="accent"
               photo={PROMO_YELLOW_PHOTO}
-              title="Livraison Gratuite"
-              subtitle="Sur les commandes de plus de 30 €"
+              title="À emporter, sans frais"
+              subtitle="Commandez en ligne et retirez au restaurant : aucun frais de livraison"
               onClick={() => goToMenu()}
             />
           </div>
