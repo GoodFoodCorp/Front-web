@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { StripeCardElement } from '@stripe/stripe-js';
 import { Button } from '../../../components/Button';
-import { CARD_STYLE, DEMO_TEST_CARDS, getStripe, stripeEnabled, stripeErrorMessage } from '../../../services/stripe';
+import { CARD_OPTIONS, DEMO_TEST_CARDS, getStripe, stripeEnabled, stripeErrorMessage } from '../../../services/stripe';
 import { paymentsApi } from '../api/paymentsApi';
 import { useAddPaymentMethod } from '../hooks/usePayments';
 
@@ -25,7 +25,7 @@ export function AddCardForm({ onDone, onCancel }: { onDone: () => void; onCancel
     let card: StripeCardElement | null = null;
     void getStripe().then((stripe) => {
       if (!stripe || !mountRef.current) return;
-      card = stripe.elements({ locale: 'fr' }).create('card', { hidePostalCode: true, style: CARD_STYLE });
+      card = stripe.elements({ locale: 'fr' }).create('card', CARD_OPTIONS);
       card.mount(mountRef.current);
       cardRef.current = card;
     });

@@ -1,4 +1,4 @@
-import { loadStripe, type Stripe, type StripeError } from '@stripe/stripe-js';
+import { loadStripe, type Stripe, type StripeCardElementOptions, type StripeError } from '@stripe/stripe-js';
 
 /**
  * Stripe.js, loaded only when a publishable key is configured. Card numbers
@@ -67,3 +67,7 @@ export const CARD_STYLE = {
   },
   invalid: { color: '#dc2626' },
 };
+
+/** The card field everywhere a card is typed. Link (Stripe's own saved-card
+ *  service) is off: it asked a signed-in customer for an email again. */
+export const CARD_OPTIONS: StripeCardElementOptions = { hidePostalCode: true, disableLink: true, style: CARD_STYLE };
