@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ShoppingCart, Star, Store } from 'lucide-react';
+import { Check, ShoppingCart, Store } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Modal } from '../../../components/Modal';
 import { useRestaurantMenu } from '../../catalog/hooks/useMenu';
+import { AllergenList } from '../../catalog/components/AllergenList';
 import { useRestaurants } from '../../restaurants/hooks/useRestaurants';
 import { useCartStore } from '../../../store/cartStore';
 import { useChatStore } from '../../../store/chatStore';
@@ -95,11 +96,6 @@ function DishDetail({ dish, onClose }: { dish: DishCard; onClose: () => void }) 
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {dish.category && <span className="rounded-full bg-brand-pale px-2.5 py-1 font-semibold text-brand">{dish.category}</span>}
-          {!!item?.rating && (
-            <span className="inline-flex items-center gap-1 text-neutral-500">
-              <Star size={13} className="fill-accent text-accent" aria-hidden /> {item.rating}
-            </span>
-          )}
           {!available && <span className="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-600">Indisponible</span>}
         </div>
         {(item?.description || dish.description) && (
@@ -111,9 +107,11 @@ function DishDetail({ dish, onClose }: { dish: DishCard; onClose: () => void }) 
             <p className="text-sm text-neutral-600">{item.ingredients.join(', ')}</p>
           </div>
         )}
-        <p className="text-xs text-neutral-400">
-          Allergènes et régimes : vérifiez auprès du restaurant avant de commander.
-        </p>
+        {item ? (
+          <AllergenList allergens={item.allergens} />
+        ) : (
+          <p className="text-xs text-neutral-400">Allergènes : consultez la carte du restaurant avant de commander.</p>
+        )}
         <div className="flex flex-wrap gap-2">
           <Button onClick={addToCart} disabled={!item || !available || added} className="flex-1">
             {added ? (

@@ -10,6 +10,8 @@ import { RecipeEditor, validateRecipe } from '../components/RecipeEditor';
 import type { StockStatus } from '../components/RecipeEditor';
 import { Spinner } from '../components/Spinner';
 import { Switch } from '../components/Switch';
+import { AllergenList } from '../features/catalog/components/AllergenList';
+import { AllergenPicker } from '../features/catalog/components/AllergenPicker';
 import {
   useCategories,
   useCreateMenuItem,
@@ -197,6 +199,7 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
               emoji: editing.emoji,
               available: editing.available,
               ingredients: editing.ingredients,
+              allergens: editing.allergens,
               image_data_url: editing.imageUrl,
             }}
             stockNames={stockNames}
@@ -248,6 +251,7 @@ const EMPTY_DISH_FORM: MenuItemForm = {
   emoji: '🍔',
   available: true,
   ingredients: [],
+  allergens: [],
   image_data_url: '',
 };
 
@@ -299,6 +303,7 @@ function DishCard({
             ))}
           </div>
         )}
+        <AllergenList allergens={item.allergens} className="mt-2" />
         <div className="mt-4 flex gap-2">
           {canEdit && (
             <Button variant="ghost" onClick={onEdit} className="flex-1 py-2 text-sm">
@@ -463,6 +468,7 @@ function DishFormFields({
       // Franchisees: the customer-facing list is derived from the recipe.
       ingredients:
         !isAdmin && editedRecipe !== null ? editedRecipe.map((l) => l.stockItemName) : form.ingredients,
+      allergens: form.allergens,
       image_data_url: form.image_data_url,
     };
     setSaving(true);
@@ -580,6 +586,13 @@ function DishFormFields({
           )}
         </FormSection>
       )}
+
+      <FormSection
+        title="Allergènes"
+        hint="Obligatoire : les clients voient ces allergènes sur la carte avant de commander. Cochez tous ceux que le plat contient, même en trace."
+      >
+        <AllergenPicker value={form.allergens} onChange={(allergens) => setForm({ ...form, allergens })} />
+      </FormSection>
 
       <FormSection title="Visibilité">
         <label className="flex items-center gap-3 text-sm font-semibold text-neutral-700">

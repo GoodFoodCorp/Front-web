@@ -9,6 +9,8 @@ export interface MenuItem {
   rating: number;
   available: boolean;
   ingredients: string[];
+  /** Codes of the 14 regulatory allergens present (see catalog/allergens). */
+  allergens: string[];
   /** True when owned by head office and common to every restaurant. */
   isGlobal: boolean;
   /** True when *this* restaurant hid a global item for itself (see isGlobal). */
@@ -29,6 +31,7 @@ export interface MenuItemDto {
   rating: number;
   available: boolean;
   ingredients: string[] | null;
+  allergens?: string[] | null;
   is_global: boolean;
   hidden_for_viewer: boolean;
   image_data_url: string;
@@ -43,6 +46,7 @@ export interface MenuItemForm {
   emoji: string;
   available: boolean;
   ingredients: string[];
+  allergens: string[];
   image_data_url: string;
 }
 
