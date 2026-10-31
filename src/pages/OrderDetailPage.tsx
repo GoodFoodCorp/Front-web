@@ -23,7 +23,7 @@ import { stripeEnabled } from '../services/stripe';
 import { API_BASE_URL } from '../config/app.config';
 import type { Delivery, DeliveryDetail } from '../features/delivery/types/delivery.types';
 import type { Order } from '../features/orders/types/order.types';
-import { ReviewOrderCard } from '../features/reviews';
+import { ReviewOrderCard, StarPicker, Stars } from '../features/reviews';
 
 /** A delivery exists once the kitchen has the order. */
 const WITH_DELIVERY: OrderStatus[] = ['IN_PREPARATION', 'READY_FOR_PICKUP', 'IN_DELIVERY', 'DELIVERED'];
@@ -119,26 +119,48 @@ function PayNow({ order }: { order: Order }) {
 /** The customer may cancel until the kitchen starts cooking. */
 const CANCELLABLE: OrderStatus[] = ['PLACED', 'PAYMENT_PENDING', 'CONFIRMED'];
 
-function RateDelivery({ deliveryId, rating }: { deliveryId: string; rating: number | null }) {
+/** Once delivered, the customer rates the courier: stars only, sent on confirmation. */
+function RateCourierCard({ delivery }: { delivery: Delivery }) {
   const rate = useRateDelivery();
-  if (rating || rate.isSuccess) {
-    return <p className="text-sm text-neutral-500">Merci pour votre note ({rating ?? rate.data?.rating}/5).</p>;
+  const [rating, setRating] = useState(0);
+  const given = delivery.rating ?? rate.data?.rating ?? null;
+
+  if (given) {
+    return (
+      <Card className="space-y-2">
+        <h2 className="font-display font-bold text-brand">Votre note pour le livreur</h2>
+        <Stars value={given} size={18} />
+        <p className="text-xs text-neutral-400">Merci, votre note aide les livreurs à s’améliorer.</p>
+      </Card>
+    );
   }
   return (
-    <div className="flex items-center gap-1 text-sm text-neutral-600">
-      Noter la livraison :
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          disabled={rate.isPending}
-          onClick={() => rate.mutate({ id: deliveryId, rating: n, comment: '' })}
-          className="text-xl text-amber-400 hover:scale-110"
-          aria-label={`${n} étoile${n > 1 ? 's' : ''}`}
-        >
-          ★
-        </button>
-      ))}
-    </div>
+    <Card>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (rating) rate.mutate({ id: delivery._id, rating });
+        }}
+      >
+        <div>
+          <h2 className="font-display font-bold text-brand">Comment s’est passée la livraison ?</h2>
+          <p className="text-sm text-neutral-500">Notez votre livreur : ponctualité, soin, amabilité.</p>
+        </div>
+        <StarPicker name={`courier-${delivery._id}`} value={rating} onChange={setRating} legend="Note du livreur" />
+        {rate.isError && (
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+            {(rate.error as Error).message}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-sm text-xs text-neutral-400">Le livreur voit seulement sa note moyenne, pas la vôtre.</p>
+          <Button type="submit" disabled={!rating || rate.isPending}>
+            {rate.isPending ? 'Envoi…' : 'Envoyer ma note'}
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 }
 
@@ -271,7 +293,6 @@ export function OrderDetailPage() {
             <p className="text-sm text-neutral-500">Nous cherchons un livreur près du restaurant…</p>
           )}
           {deliveryDetail && ON_THE_WAY.includes(delivery.status) && <LiveTracking detail={deliveryDetail} />}
-          {delivery.status === 'DELIVERED' && <RateDelivery deliveryId={delivery._id} rating={delivery.rating ?? null} />}
 
           {delivery.status === 'DELIVERED' && delivery.deliveredAt ? (
             <p className="text-sm text-neutral-500">
@@ -295,6 +316,7 @@ export function OrderDetailPage() {
       {order.status === 'DELIVERED' && (
         <ReviewOrderCard orderId={order.id} restaurantName={restaurant?.name ?? 'le restaurant'} />
       )}
+      {order.status === 'DELIVERED' && delivery?.status === 'DELIVERED' && <RateCourierCard delivery={delivery} />}
 
       <Card className="space-y-3">
         <div className="flex items-start gap-2 text-sm text-neutral-600">

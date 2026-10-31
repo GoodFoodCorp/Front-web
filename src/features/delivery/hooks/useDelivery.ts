@@ -59,8 +59,7 @@ export function useReleaseDelivery() {
 export function useRateDelivery() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, rating, comment }: { id: string; rating: number; comment: string }) =>
-      deliveryApi.rate(id, rating, comment),
+    mutationFn: ({ id, rating }: { id: string; rating: number }) => deliveryApi.rate(id, rating),
     onSuccess: () => invalidateDeliveries(qc),
   });
 }
