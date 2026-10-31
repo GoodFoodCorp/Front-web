@@ -9,9 +9,9 @@ import type { ReviewSummary } from '../../reviews/reviewsApi';
 import { useLocationStore } from '../../../store/locationStore';
 import { formatPrice } from '../../../utils/format';
 import { restaurantsApi } from '../api/restaurantsApi';
+import { openingLabel } from '../openingHours';
 import {
   formatDistance,
-  isOpen,
   listRestaurants,
   matchRestaurants,
   relevantPlaces,
@@ -333,7 +333,7 @@ function RestaurantCard({
   summary: ReviewSummary | undefined;
   onOpen: () => void;
 }) {
-  const open = isOpen(restaurant);
+  const opening = openingLabel(restaurant);
   return (
     <button
       type="button"
@@ -349,12 +349,17 @@ function RestaurantCard({
         <h3 className="font-display text-lg font-bold text-brand">{restaurant.name}</h3>
         <span
           className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-            open ? 'bg-brand-pale text-brand' : 'bg-neutral-100 text-neutral-500'
+            opening.open ? 'bg-brand-pale text-brand' : 'bg-neutral-100 text-neutral-500'
           }`}
         >
-          {open ? 'Ouvert' : 'Fermé'}
+          {opening.badge}
         </span>
       </div>
+      {opening.detail && (
+        <p className={`-mt-1 text-xs font-semibold ${opening.open ? 'text-brand' : 'text-amber-700'}`}>
+          {opening.detail.charAt(0).toUpperCase() + opening.detail.slice(1)}
+        </p>
+      )}
       <p className="flex items-start gap-1.5 text-sm text-neutral-500">
         <MapPin size={14} aria-hidden className="mt-0.5 shrink-0" />
         <span>
