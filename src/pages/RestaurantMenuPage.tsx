@@ -14,6 +14,7 @@ import { RatingBadge, RestaurantReviews, useReviewSummaries } from '../features/
 import { AllergenList } from '../features/catalog/components/AllergenList';
 import { formatPhone, formatPrice } from '../utils/format';
 import { useCartStore } from '../store/cartStore';
+import { useLocationStore } from '../store/locationStore';
 import { dishPhoto } from '../utils/images';
 
 const ALL = 'Tous';
@@ -55,6 +56,12 @@ export function RestaurantMenuPage() {
     const fromUrl = searchParams.get('category');
     if (fromUrl) setCategory(fromUrl);
   }, [searchParams]);
+
+  // The homepage and the header search follow the restaurant last opened.
+  const remember = useLocationStore((s) => s.setRestaurantId);
+  useEffect(() => {
+    if (restaurantId) remember(restaurantId);
+  }, [restaurantId, remember]);
 
   const restaurant = restaurants?.find((r) => r.id === restaurantId);
   const catalog = useMemo(() => {
