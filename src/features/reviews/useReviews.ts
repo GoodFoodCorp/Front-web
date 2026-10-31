@@ -33,7 +33,8 @@ export function useOrderReview(orderId: string | undefined, enabled: boolean) {
     queryKey: ['reviews', 'order', orderId],
     queryFn: async () => {
       try {
-        return await reviewsApi.ofOrder(orderId!);
+        // 204 (no review yet) has no body.
+        return (await reviewsApi.ofOrder(orderId!)) ?? null;
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) return null;
         throw err;

@@ -29,7 +29,7 @@ export const reviewsApi = {
     http<RestaurantReviews>(`/api/reviews?restaurantId=${restaurantId}&limit=${REVIEWS_PAGE}&offset=${offset}`),
   summaries: (restaurantIds: string[]) =>
     http<ReviewSummary[]>(`/api/reviews/summary?restaurantIds=${restaurantIds.join(',')}`),
-  ofOrder: (orderId: string) => http<Review>(`/api/orders/${orderId}/review`),
+  ofOrder: (orderId: string) => http<Review | undefined>(`/api/orders/${orderId}/review`),
   create: (orderId: string, rating: number, comment: string) =>
     http<Review>(`/api/orders/${orderId}/review`, { method: 'POST', body: JSON.stringify({ rating, comment }) }),
   remove: (orderId: string) => http<void>(`/api/reviews/${orderId}`, { method: 'DELETE' }),
