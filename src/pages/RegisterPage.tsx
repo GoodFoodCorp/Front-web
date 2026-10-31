@@ -16,6 +16,7 @@ export function RegisterPage() {
   const register = useRegister();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accepted, setAccepted] = useState(false);
   const [confirm, setConfirm] = useState('');
   const welcome = useWelcomeStore((s) => s.phase !== 'idle');
   const playWelcome = useWelcomeStore((s) => s.play);
@@ -26,7 +27,7 @@ export function RegisterPage() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mismatch || weakPassword) return;
+    if (mismatch || weakPassword || !accepted) return;
     register.mutate(
       { email, password },
       {
@@ -89,8 +90,11 @@ export function RegisterPage() {
 
           <form onSubmit={submit} className="mt-8 space-y-4">
             <div className="enter" style={{ '--d': '340ms' } as React.CSSProperties}>
-              <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Email</label>
+              <label htmlFor="register-email" className="mb-1.5 block text-sm font-semibold text-neutral-700">
+                Email
+              </label>
               <Input
+                id="register-email"
                 type="email"
                 required
                 autoComplete="email"
@@ -100,24 +104,32 @@ export function RegisterPage() {
               />
             </div>
             <div className="enter" style={{ '--d': '420ms' } as React.CSSProperties}>
-              <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Mot de passe</label>
+              <label htmlFor="register-password" className="mb-1.5 block text-sm font-semibold text-neutral-700">
+                Mot de passe
+              </label>
               <Input
+                id="register-password"
+                aria-describedby="register-password-rule"
                 type="password"
                 required
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Au moins 8 caractères, lettres + chiffres"
+                placeholder="8 caractères minimum"
               />
-              {weakPassword && (
-                <p className="mt-1 text-xs text-red-600">{PASSWORD_RULE}</p>
-              )}
+              <p
+                id="register-password-rule"
+                className={`mt-1 text-xs ${weakPassword ? 'text-red-600' : 'text-neutral-400'}`}
+              >
+                {PASSWORD_RULE}
+              </p>
             </div>
             <div className="enter" style={{ '--d': '500ms' } as React.CSSProperties}>
-              <label className="mb-1.5 block text-sm font-semibold text-neutral-700">
+              <label htmlFor="register-confirm" className="mb-1.5 block text-sm font-semibold text-neutral-700">
                 Confirmer le mot de passe
               </label>
               <Input
+                id="register-confirm"
                 type="password"
                 required
                 autoComplete="new-password"
@@ -130,6 +142,27 @@ export function RegisterPage() {
               )}
             </div>
 
+            <label className="enter flex items-start gap-2.5 text-sm text-neutral-600" style={{ '--d': '540ms' } as React.CSSProperties}>
+              <input
+                type="checkbox"
+                required
+                checked={accepted}
+                onChange={(e) => setAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-brand)]"
+              />
+              <span>
+                J’accepte les{' '}
+                <Link to="/terms" target="_blank" className="font-semibold text-brand underline">
+                  conditions générales
+                </Link>{' '}
+                et j’ai lu la{' '}
+                <Link to="/privacy" target="_blank" className="font-semibold text-brand underline">
+                  politique de confidentialité
+                </Link>
+                .
+              </span>
+            </label>
+
             {register.isError && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
                 {(register.error as Error).message}
@@ -140,7 +173,7 @@ export function RegisterPage() {
               type="submit"
               className="enter w-full"
               style={{ '--d': '580ms' } as React.CSSProperties}
-              disabled={register.isPending || welcome || mismatch || weakPassword}
+              disabled={register.isPending || welcome || mismatch || weakPassword || !accepted}
             >
               {register.isPending || welcome ? (
                 <>

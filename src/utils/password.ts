@@ -1,7 +1,11 @@
-/** Same rule as auth-service (8+ characters, at least one letter and one
- *  digit), checked before sending so the user sees it while typing. */
+/** Same rule as auth-service (CNIL recommendation): 8 to 72 characters
+ *  mixing at least three of lower case, upper case, digits and symbols —
+ *  checked before sending so the user sees it while typing. */
 export function isWeakPassword(password: string): boolean {
-  return password.length < 8 || !/[0-9]/.test(password) || !/[a-zA-Z]/.test(password);
+  if (password.length < 8 || new TextEncoder().encode(password).length > 72) return true;
+  const kinds = [/\p{Ll}/u, /\p{Lu}/u, /[0-9]/, /[^\p{L}0-9]/u].filter((re) => re.test(password)).length;
+  return kinds < 3;
 }
 
-export const PASSWORD_RULE = 'Le mot de passe doit faire 8+ caractères, avec au moins une lettre et un chiffre.';
+export const PASSWORD_RULE =
+  'Au moins 8 caractères, avec trois types parmi : minuscules, majuscules, chiffres, symboles.';
