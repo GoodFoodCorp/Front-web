@@ -53,6 +53,7 @@ export function CartPage() {
   const [cardId, setCardId] = useState<string | null>(null);
   const [newCard, setNewCard] = useState<StripeCardElement | null>(null);
   const [newCardComplete, setNewCardComplete] = useState(false);
+  const [saveCard, setSaveCard] = useState(false);
   // One key per checkout attempt: a double click or a retry never places two orders.
   const idempotencyKey = useRef(crypto.randomUUID());
 
@@ -132,12 +133,13 @@ export function CartPage() {
         },
         paymentMethodId: selectedCard?.id,
         newCard: payWithNewCard ? (newCard ?? undefined) : undefined,
+        saveCard: payWithNewCard && saveCard,
         idempotencyKey: idempotencyKey.current,
       },
       {
-        onSuccess: (order) => {
+        onSuccess: ({ order, cardSaved }) => {
           idempotencyKey.current = crypto.randomUUID();
-          navigate(`/orders/${order.id}`, { state: { justPaid: true } });
+          navigate(`/orders/${order.id}`, { state: { justPaid: true, cardSaved } });
         },
       },
     );
@@ -378,6 +380,8 @@ export function CartPage() {
                   onChange={setCardId}
                   onNewCard={setNewCard}
                   onNewCardComplete={setNewCardComplete}
+                  saveCard={saveCard}
+                  onSaveCardChange={setSaveCard}
                 />
               )}
               {needsCard && (

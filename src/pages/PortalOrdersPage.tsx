@@ -42,7 +42,9 @@ function nextStep(order: Order): { status: OrderStatus; label: string } | null {
 export function PortalOrdersPage() {
   const tenantId = useAuthStore((s) => s.tenantId);
   const [tab, setTab] = useState<'active' | 'done'>('active');
-  const { data: orders, isLoading } = useRestaurantOrders(tenantId, tab === 'active' ? ACTIVE : DONE);
+  const list = useRestaurantOrders(tenantId, tab === 'active' ? ACTIVE : DONE);
+  const orders = list.data?.pages.flat();
+  const isLoading = list.isLoading;
 
   return (
     <div className="space-y-6">
@@ -77,6 +79,13 @@ export function PortalOrdersPage() {
           {orders.map((order) => (
             <OrderRow key={order.id} order={order} />
           ))}
+          {list.hasNextPage && (
+            <div className="pt-2 text-center">
+              <Button variant="ghost" disabled={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
+                {list.isFetchingNextPage ? 'Chargement…' : 'Afficher plus de commandes'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

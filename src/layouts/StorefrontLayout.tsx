@@ -12,6 +12,7 @@ import {
   Truck,
   User,
 } from 'lucide-react';
+import { NotificationBell } from '../features/notifications/NotificationBell';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
 import { useLocationStore } from '../store/locationStore';
@@ -196,6 +197,8 @@ export function StorefrontLayout() {
                 </>
               )}
             </div>
+
+            {userId && <NotificationBell />}
 
             <button
               onClick={() => navigate('/cart')}

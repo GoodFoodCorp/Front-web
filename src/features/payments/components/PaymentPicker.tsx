@@ -16,12 +16,17 @@ export function PaymentPicker({
   onChange,
   onNewCard,
   onNewCardComplete,
+  saveCard,
+  onSaveCardChange,
 }: {
   cards: PaymentMethod[];
   value: string;
   onChange: (value: string) => void;
   onNewCard: (card: StripeCardElement | null) => void;
   onNewCardComplete: (complete: boolean) => void;
+  /** Keep the typed card after the payment (asked, never by default). */
+  saveCard?: boolean;
+  onSaveCardChange?: (save: boolean) => void;
 }) {
   return (
     <fieldset className="space-y-2">
@@ -44,10 +49,20 @@ export function PaymentPicker({
         <Plus size={18} className="shrink-0 text-brand" aria-hidden />
         <span className="flex-1">
           <span className="block font-semibold text-neutral-800">Nouvelle carte</span>
-          <span className="block text-xs text-neutral-400">Pour cette commande, sans l'enregistrer</span>
+          <span className="block text-xs text-neutral-400">Saisie sécurisée par Stripe</span>
         </span>
       </Tile>
-      {value === NEW_CARD && <NewCardField onReady={onNewCard} onComplete={onNewCardComplete} />}
+      {value === NEW_CARD && (
+        <>
+          <NewCardField onReady={onNewCard} onComplete={onNewCardComplete} />
+          {onSaveCardChange && (
+            <label className="flex items-center gap-2 px-1 text-sm text-neutral-600">
+              <input type="checkbox" checked={!!saveCard} onChange={(e) => onSaveCardChange(e.target.checked)} />
+              Enregistrer cette carte pour mes prochaines commandes
+            </label>
+          )}
+        </>
+      )}
     </fieldset>
   );
 }

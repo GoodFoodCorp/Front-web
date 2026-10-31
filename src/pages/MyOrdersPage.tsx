@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ChevronRight, ShoppingBag, Store, Truck } from 'lucide-react';
+import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
@@ -11,6 +12,7 @@ import { formatPrice, formatDateTime } from '../utils/format';
 import { dishPhoto } from '../utils/images';
 
 const FINISHED: OrderStatus[] = ['DELIVERED', 'CANCELLED'];
+const AWAITING_PAYMENT: OrderStatus[] = ['PLACED', 'PAYMENT_PENDING'];
 
 /** "2× Burger Deluxe, 1× Frites et 2 autres". */
 function itemsSummary(order: Order, shown = 3): string {
@@ -20,7 +22,9 @@ function itemsSummary(order: Order, shown = 3): string {
 }
 
 export function MyOrdersPage() {
-  const { data: orders, isLoading } = useMyOrders();
+  const list = useMyOrders();
+  const orders = list.data?.pages.flat();
+  const isLoading = list.isLoading;
   const { data: restaurants } = useRestaurants();
 
   if (isLoading) return <Spinner label="Chargement de vos commandes…" />;
@@ -43,6 +47,13 @@ export function MyOrdersPage() {
         <OrderSection title="En cours" orders={ongoing} restaurantName={restaurantName} />
       )}
       {past.length > 0 && <OrderSection title="Passées" orders={past} restaurantName={restaurantName} />}
+      {list.hasNextPage && (
+        <div className="text-center">
+          <Button variant="ghost" disabled={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
+            {list.isFetchingNextPage ? 'Chargement…' : 'Afficher plus de commandes'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -70,12 +81,12 @@ function OrderRow({ order, restaurant }: { order: Order; restaurant: string }) {
   const photos = order.items.slice(0, 3);
   return (
     <Link to={`/orders/${order.id}`} className="block">
-      <Card className="flex items-center gap-4 transition hover:border-brand/30 hover:shadow-[var(--shadow-lift)]">
-        <div className="flex shrink-0 -space-x-3">
+      <Card className="flex items-center gap-3 p-4 transition hover:border-brand/30 hover:shadow-[var(--shadow-lift)] sm:gap-4">
+        <div className="flex shrink-0 -space-x-6 sm:-space-x-3">
           {photos.map((item) => (
             <div
               key={item.id}
-              className="h-14 w-14 rounded-xl border-2 border-white bg-cover bg-center shadow-sm"
+              className="h-12 w-12 rounded-xl border-2 border-white bg-cover bg-center shadow-sm sm:h-14 sm:w-14"
               style={{ backgroundImage: `url(${dishPhoto(item.menu_item_name)})` }}
               aria-hidden
             />
@@ -83,10 +94,13 @@ function OrderRow({ order, restaurant }: { order: Order; restaurant: string }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 font-display font-bold text-brand">
+            <span className="inline-flex min-w-0 items-center gap-1.5 truncate font-display font-bold text-brand">
               <Store size={15} aria-hidden /> {restaurant}
             </span>
             <OrderStatusBadge status={order.status} />
+            {AWAITING_PAYMENT.includes(order.status) && (
+              <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-brand-dark">À payer</span>
+            )}
           </div>
           <p className="mt-1 truncate text-sm text-neutral-700">{itemsSummary(order)}</p>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-neutral-400">
@@ -95,8 +109,8 @@ function OrderRow({ order, restaurant }: { order: Order; restaurant: string }) {
             {order.id.slice(0, 8)}
           </p>
         </div>
-        <span className="font-display text-lg font-extrabold text-brand">{formatPrice(order.amount_due_cents)}</span>
-        <ChevronRight size={18} className="shrink-0 text-neutral-300" aria-hidden />
+        <span className="shrink-0 font-display text-base font-extrabold text-brand sm:text-lg">{formatPrice(order.amount_due_cents)}</span>
+        <ChevronRight size={18} className="hidden shrink-0 text-neutral-300 sm:block" aria-hidden />
       </Card>
     </Link>
   );
