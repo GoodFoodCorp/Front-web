@@ -8,6 +8,7 @@ describe('frenchError', () => {
     expect(frenchError('item quantity must be greater than zero', 400)).toBe('La quantité doit être au moins de 1.');
     expect(frenchError('at most 50 of one dish per order', 400)).toContain('50');
     expect(frenchError('no service at 15:30: choose a lunch or dinner slot', 400)).toContain('15:30');
+    expect(frenchError("A restaurant with slug 'good-food-rouen' already exists.", 409)).toContain('good-food-rouen');
   });
 
   it('keeps messages already written in French', () => {
