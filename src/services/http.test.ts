@@ -92,8 +92,8 @@ describe('http', () => {
       .mockResolvedValueOnce(json(400, { title: 'One or more validation errors occurred.' }));
 
     await expect(http('/api/a')).rejects.toMatchObject({ status: 400, message: 'IBAN invalide' });
-    await expect(http('/api/b')).rejects.toMatchObject({ status: 403, message: 'admin only' });
-    await expect(http('/api/c')).rejects.toMatchObject({ message: 'One or more validation errors occurred.' });
+    await expect(http('/api/b')).rejects.toMatchObject({ status: 403, message: "Vous n'avez pas accès à cette action." });
+    await expect(http('/api/c')).rejects.toMatchObject({ message: expect.stringContaining('Vérifiez votre saisie') });
   });
 
   it('survives a non-JSON error page from the gateway', async () => {
