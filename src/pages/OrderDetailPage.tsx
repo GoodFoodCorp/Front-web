@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, MapPin, Store, Truck } from 'lucide-react';
+import type { StripeCardElement } from '@stripe/stripe-js';
+import { ArrowLeft, CheckCircle2, Clock, CreditCard, FileText, MapPin, Store, Truck } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Spinner } from '../components/Spinner';
 import { OrderStatusBadge } from '../features/orders/components/OrderStatusBadge';
-import { useCancelOrder, useOrder } from '../features/orders/hooks/useOrders';
+import { useCancelOrder, useOrder, usePayOrder } from '../features/orders/hooks/useOrders';
 import type { OrderStatus } from '../features/orders/types/order.types';
 import { Button } from '../components/Button';
 import { DeliveryStatusBadge } from '../features/delivery/components/DeliveryStatusBadge';
@@ -14,6 +15,102 @@ import { dishPhoto } from '../utils/images';
 import { useRestaurant } from '../features/restaurants/hooks/useRestaurants';
 import { CancelOrderDialog } from '../features/orders/components/CancelOrderDialog';
 import { CANCELLED_BY, CUSTOMER_REASONS, reasonLabel } from '../features/orders/cancellation';
+import { LiveMap } from '../features/tracking/LiveMap';
+import { formatEta, useLiveDelivery } from '../features/tracking/useLiveDelivery';
+import { NEW_CARD, PaymentPicker } from '../features/payments/components/PaymentPicker';
+import { usePaymentMethods } from '../features/payments/hooks/usePayments';
+import { stripeEnabled } from '../services/stripe';
+import { API_BASE_URL } from '../config/app.config';
+import type { Delivery, DeliveryDetail } from '../features/delivery/types/delivery.types';
+import type { Order } from '../features/orders/types/order.types';
+
+/** A delivery exists once the kitchen has the order. */
+const WITH_DELIVERY: OrderStatus[] = ['IN_PREPARATION', 'READY_FOR_PICKUP', 'IN_DELIVERY', 'DELIVERED'];
+const AWAITING_PAYMENT: OrderStatus[] = ['PLACED', 'PAYMENT_PENDING'];
+const ON_THE_WAY = ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'];
+
+/** Where the courier is, live, and when they arrive. */
+function LiveTracking({ detail }: { detail: DeliveryDetail }) {
+  const delivery: Delivery = detail.delivery;
+  const live = useLiveDelivery(delivery._id, ON_THE_WAY.includes(delivery.status));
+  const courier = live ?? detail.lastPosition;
+  const pickedUp = live ? live.phase === 'TO_CUSTOMER' : delivery.status !== 'ASSIGNED';
+  const eta = formatEta(live?.etaAt ?? delivery.estimatedDeliveryTime);
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span className="font-semibold text-neutral-700">
+          {pickedUp ? 'Votre livreur arrive' : 'Votre livreur se rend au restaurant'}
+        </span>
+        {eta && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-pale px-3 py-1 font-semibold text-brand">
+            <Clock size={14} /> {eta}
+          </span>
+        )}
+      </div>
+      <LiveMap
+        restaurant={delivery.pickup}
+        customer={delivery.dropoff}
+        courier={courier}
+        towards={pickedUp ? 'customer' : 'restaurant'}
+      />
+      {live?.remainingKm !== undefined && (
+        <p className="text-xs text-neutral-400">Encore {live.remainingKm.toString().replace('.', ',')} km · position mise à jour en direct</p>
+      )}
+    </div>
+  );
+}
+
+/** An order left unpaid: pay it here, with a saved card or a new one. */
+function PayNow({ order }: { order: Order }) {
+  const pay = usePayOrder();
+  const { data: cards } = usePaymentMethods();
+  const [choice, setChoice] = useState<string | null>(null);
+  const [newCard, setNewCard] = useState<StripeCardElement | null>(null);
+  const [complete, setComplete] = useState(false);
+  const [saveCard, setSaveCard] = useState(false);
+  const fallback = cards?.find((c) => c.isDefault)?.id ?? cards?.[0]?.id ?? NEW_CARD;
+  const value = choice ?? fallback;
+  const useNew = value === NEW_CARD;
+  const ready = !stripeEnabled || (useNew ? !!newCard && complete : !!value);
+
+  return (
+    <Card className="space-y-3 border-amber-200">
+      <div className="flex items-center gap-2">
+        <CreditCard size={18} className="text-brand" />
+        <h2 className="font-display font-bold text-brand">Paiement en attente</h2>
+      </div>
+      <p className="text-sm text-neutral-500">Le restaurant reçoit la commande dès qu'elle est payée.</p>
+      {stripeEnabled && cards && (
+        <PaymentPicker
+          cards={cards}
+          value={value}
+          onChange={setChoice}
+          onNewCard={setNewCard}
+          onNewCardComplete={setComplete}
+          saveCard={saveCard}
+          onSaveCardChange={setSaveCard}
+        />
+      )}
+      {pay.isError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{(pay.error as Error).message}</p>}
+      <Button
+        variant="accent"
+        className="w-full py-3"
+        disabled={!ready || pay.isPending}
+        onClick={() =>
+          pay.mutate({
+            orderId: order.id,
+            paymentMethodId: useNew ? undefined : value,
+            newCard: useNew ? (newCard ?? undefined) : undefined,
+            saveCard: useNew && saveCard,
+          })
+        }
+      >
+        {pay.isPending ? 'Paiement en cours…' : `Payer ${formatPrice(order.amount_due_cents)}`}
+      </Button>
+    </Card>
+  );
+}
 
 /** The customer may cancel until the kitchen starts cooking. */
 const CANCELLABLE: OrderStatus[] = ['PLACED', 'PAYMENT_PENDING', 'CONFIRMED'];
@@ -63,8 +160,12 @@ export function OrderDetailPage() {
   const { data: order, isLoading } = useOrder(id);
   const cancel = useCancelOrder();
   const [cancelling, setCancelling] = useState(false);
-  const justPaid = (location.state as { justPaid?: boolean } | null)?.justPaid;
-  const { data: deliveryDetail } = useOrderDelivery(order?.id, !!order && order.status !== 'CANCELLED');
+  const state = location.state as { justPaid?: boolean; cardSaved?: boolean } | null;
+  const justPaid = state?.justPaid;
+  const { data: deliveryDetail } = useOrderDelivery(
+    order?.id,
+    !!order && order.fulfillment !== 'PICKUP' && WITH_DELIVERY.includes(order.status),
+  );
   const { data: restaurant } = useRestaurant(order?.restaurant_id);
 
   if (isLoading) return <Spinner label="Chargement…" />;
@@ -84,10 +185,16 @@ export function OrderDetailPage() {
           <CheckCircle2 size={22} />
           <div>
             <p className="font-display font-bold">Paiement confirmé !</p>
-            <p className="text-sm text-brand/70">Votre commande a bien été transmise au restaurant.</p>
+            <p className="text-sm text-brand/70">
+              Votre commande a bien été transmise au restaurant. La facture vous est envoyée par email.
+              {state?.cardSaved === true && ' Votre carte est enregistrée pour vos prochaines commandes.'}
+              {state?.cardSaved === false && " Votre carte n'a pas pu être enregistrée : ajoutez-la depuis votre profil."}
+            </p>
           </div>
         </div>
       )}
+
+      {AWAITING_PAYMENT.includes(order.status) && <PayNow order={order} />}
 
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -156,6 +263,10 @@ export function OrderDetailPage() {
               <span className="font-display text-xl font-extrabold tracking-widest">{deliveryDetail.handoverCode}</span>
             </div>
           )}
+          {delivery.status === 'UNASSIGNED' && (
+            <p className="text-sm text-neutral-500">Nous cherchons un livreur près du restaurant…</p>
+          )}
+          {deliveryDetail && ON_THE_WAY.includes(delivery.status) && <LiveTracking detail={deliveryDetail} />}
           {delivery.status === 'DELIVERED' && <RateDelivery deliveryId={delivery._id} rating={delivery.rating ?? null} />}
 
           {delivery.status === 'DELIVERED' && delivery.deliveredAt ? (
@@ -164,7 +275,7 @@ export function OrderDetailPage() {
             </p>
           ) : (
             delivery.estimatedDeliveryTime &&
-            delivery.status !== 'CANCELLED' && (
+            delivery.status === 'UNASSIGNED' && (
               <p className="text-sm text-neutral-500">
                 Arrivée estimée vers{' '}
                 {new Date(delivery.estimatedDeliveryTime).toLocaleTimeString('fr-FR', {
@@ -229,6 +340,16 @@ export function OrderDetailPage() {
           <span>Total</span>
           <span>{formatPrice(order.amount_due_cents)}</span>
         </div>
+        {order.confirmed_at && (
+          <a
+            href={`${API_BASE_URL}/api/orders/${order.id}/invoice`}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+          >
+            <FileText size={15} /> Voir la facture
+          </a>
+        )}
         {order.status === 'CANCELLED' && order.cancellation && (
           <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
             <p className="font-semibold">

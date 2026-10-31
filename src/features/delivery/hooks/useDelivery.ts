@@ -76,3 +76,46 @@ export function useOrderDelivery(orderId: string | undefined, enabled: boolean) 
     refetchInterval: BACKOFFICE_REFETCH_MS,
   });
 }
+
+export function useCourierOverview() {
+  return useQuery({ queryKey: ['deliveries', 'overview'], queryFn: deliveryApi.overview });
+}
+
+/** null: the courier has no profile yet (404). */
+export function useCourierProfile() {
+  return useQuery({
+    queryKey: ['courier-profile'],
+    queryFn: async () => {
+      try {
+        return await deliveryApi.profile();
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) return null;
+        throw err;
+      }
+    },
+  });
+}
+
+export function useSaveCourierProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deliveryApi.saveProfile,
+    onSuccess: (profile) => qc.setQueryData(['courier-profile'], profile),
+  });
+}
+
+export function useSetAvailability() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deliveryApi.setAvailability,
+    onSuccess: (profile) => qc.setQueryData(['courier-profile'], profile),
+  });
+}
+
+export function useRequestPayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deliveryApi.requestPayout,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['deliveries', 'overview'] }),
+  });
+}

@@ -49,3 +49,38 @@ export interface DeliveryDetail {
   /** Given to the courier at the door; only the customer receives it. */
   handoverCode?: string;
 }
+
+export type VehicleType = 'bike' | 'ebike' | 'scooter' | 'car';
+
+export interface CourierProfile {
+  id: string;
+  userId: string;
+  vehicleType: VehicleType;
+  siret: string;
+  city: string;
+  hasBagEquipped: boolean;
+  isAvailable: boolean;
+}
+
+export interface CourierProfileForm {
+  vehicleType: VehicleType;
+  siret: string;
+  city: string;
+  iban: string;
+  drivingLicenseNumber?: string;
+  hasBagEquipped: boolean;
+}
+
+/** Amounts in euros. */
+export interface CourierOverview {
+  totalEarned: number;
+  availableBalance: number;
+  withdrawnTotal: number;
+  pendingAmount: number;
+  minWithdrawal: number;
+  completedTrips: number;
+  trips: { id: string; orderId: string; pickupAddress: string; dropoffAddress: string; deliveredAt: string; amount: number }[];
+  ibanMasked: string | null;
+  rating: { average: number | null; count: number };
+  withdrawals: { id: string; amount: number; ibanMasked: string; status: 'PENDING' | 'PAID'; requestedAt: string; paidAt?: string | null }[];
+}

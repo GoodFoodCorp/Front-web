@@ -79,8 +79,9 @@ export interface CheckoutRequest {
   order: CreateOrderPayload;
   /** One of the customer's saved cards… */
   paymentMethodId?: string;
-  /** …or a card typed now, for this payment only (Stripe). */
+  /** …or a card typed now (Stripe), kept afterwards if saveCard. */
   newCard?: StripeCardElement;
+  saveCard?: boolean;
   /** Same key for every retry of one checkout: never two orders. */
   idempotencyKey: string;
 }

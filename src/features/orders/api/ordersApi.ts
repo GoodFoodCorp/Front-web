@@ -11,7 +11,7 @@ export const ordersApi = {
 
   get: (id: string) => http<Order>(`/api/orders/${id}`),
 
-  listMine: () => http<Order[]>('/api/orders'),
+  listMine: (limit = 50, offset = 0) => http<Order[]>(`/api/orders?limit=${limit}&offset=${offset}`),
 
   /** Cancels with a reason: the customer until the kitchen starts, the
    *  restaurant until the courier has the order. */
@@ -19,9 +19,9 @@ export const ordersApi = {
     http<Order>(`/api/orders/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason, comment }) }),
 
   /** A restaurant's orders, newest first, optionally only in some statuses. */
-  listByRestaurant: (restaurantId: string, statuses: OrderStatus[] = []) =>
+  listByRestaurant: (restaurantId: string, statuses: OrderStatus[] = [], limit = 100, offset = 0) =>
     http<Order[]>(
-      `/api/orders?restaurantId=${restaurantId}&limit=100${statuses.length ? `&status=${statuses.join(',')}` : ''}`,
+      `/api/orders?restaurantId=${restaurantId}&limit=${limit}&offset=${offset}${statuses.length ? `&status=${statuses.join(',')}` : ''}`,
     ),
 
   createPaymentIntent: (id: string, paymentMethodId?: string) =>

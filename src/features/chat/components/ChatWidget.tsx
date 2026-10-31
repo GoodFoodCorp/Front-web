@@ -207,7 +207,7 @@ function OrderProposalCard({ message }: { message: ChatMessage }) {
         idempotencyKey: `chat-${message.id}`,
       },
       {
-        onSuccess: (order) => {
+        onSuccess: ({ order }) => {
           setProposalStatus(message.id, 'confirmed');
           addMessage({
             role: 'assistant',
