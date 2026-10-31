@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Star } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
 import { useOrderReview, useReviewOrder } from '../useReviews';
-import { RATING_LABELS } from '../rating';
+import { StarPicker } from './StarPicker';
 import { Stars } from './Stars';
 
 const MAX_COMMENT = 500;
@@ -13,7 +12,6 @@ export function ReviewOrderCard({ orderId, restaurantName }: { orderId: string; 
   const { data: review, isLoading } = useOrderReview(orderId, true);
   const send = useReviewOrder();
   const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
   const [comment, setComment] = useState('');
 
   if (isLoading) return null;
@@ -30,7 +28,6 @@ export function ReviewOrderCard({ orderId, restaurantName }: { orderId: string; 
     );
   }
 
-  const shown = hover || rating;
   return (
     <Card>
       <form
@@ -44,34 +41,7 @@ export function ReviewOrderCard({ orderId, restaurantName }: { orderId: string; 
           <h2 className="font-display font-bold text-brand">Comment était {restaurantName} ?</h2>
           <p className="text-sm text-neutral-500">Votre avis aide les autres clients et le restaurant.</p>
         </div>
-        <fieldset>
-          <legend className="sr-only">Votre note</legend>
-          <div className="flex items-center gap-1" onMouseLeave={() => setHover(0)}>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <label key={n} className="cursor-pointer" onMouseEnter={() => setHover(n)}>
-                <input
-                  type="radio"
-                  name={`rating-${orderId}`}
-                  value={n}
-                  checked={rating === n}
-                  onChange={() => setRating(n)}
-                  className="peer sr-only"
-                />
-                <span className="sr-only">{`${n} étoile${n > 1 ? 's' : ''} : ${RATING_LABELS[n]}`}</span>
-                <Star
-                  size={30}
-                  aria-hidden
-                  className={`rounded transition peer-focus-visible:ring-2 peer-focus-visible:ring-brand ${
-                    n <= shown ? 'fill-accent text-accent' : 'fill-neutral-100 text-neutral-300'
-                  }`}
-                />
-              </label>
-            ))}
-            <span className="ml-2 text-sm font-semibold text-neutral-600" aria-live="polite">
-              {RATING_LABELS[shown]}
-            </span>
-          </div>
-        </fieldset>
+        <StarPicker name={`rating-${orderId}`} value={rating} onChange={setRating} />
         <div>
           <label htmlFor={`review-${orderId}`} className="mb-1 block text-sm font-semibold text-neutral-700">
             Un commentaire ? <span className="font-normal text-neutral-400">(facultatif)</span>

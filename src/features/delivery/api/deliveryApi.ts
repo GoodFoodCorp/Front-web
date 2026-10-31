@@ -23,8 +23,8 @@ export const deliveryApi = {
   dropoff: (id: string, code: string) =>
     http<Delivery>(`/api/deliveries/${id}/dropoff`, { method: 'POST', body: JSON.stringify({ code }) }),
 
-  rate: (id: string, rating: number, comment: string) =>
-    http<Delivery>(`/api/deliveries/${id}/rating`, { method: 'POST', body: JSON.stringify({ rating, comment }) }),
+  rate: (id: string, rating: number) =>
+    http<Delivery>(`/api/deliveries/${id}/rating`, { method: 'POST', body: JSON.stringify({ rating }) }),
 
   /** Earnings, recent trips, balance and payouts of the connected courier. */
   overview: () => http<CourierOverview>('/api/deliveries/history'),
