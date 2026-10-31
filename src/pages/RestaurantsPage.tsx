@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Bike, CalendarDays, MapPin, TrendingUp } from 'lucide-react';
+import { ArrowRight, CalendarDays, Repeat, TrendingUp } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
@@ -9,9 +9,9 @@ import { useRestaurantMenu } from '../features/catalog/hooks/useMenu';
 import { useLocationStore } from '../store/locationStore';
 import { useCartStore } from '../store/cartStore';
 import type { MenuItem } from '../features/catalog/types/menu.types';
-import type { Restaurant } from '../features/restaurants/types/restaurant.types';
-import { RatingBadge, useReviewSummaries } from '../features/reviews';
-import type { ReviewSummary } from '../features/reviews/reviewsApi';
+import { RestaurantFinder } from '../features/restaurants/components/RestaurantFinder';
+import { distanceKm } from '../features/restaurants/finder';
+import { useReviewSummaries } from '../features/reviews';
 import { formatPrice } from '../utils/format';
 import { HERO_PHOTO, PROMO_GREEN_PHOTO, PROMO_YELLOW_PHOTO, categoryPhoto, dishPhoto } from '../utils/images';
 
@@ -20,8 +20,16 @@ const PROMO_CODE = 'BIENVENUE20';
 export function RestaurantsPage() {
   const navigate = useNavigate();
   const { data: restaurants, isLoading: restaurantsLoading } = useRestaurants();
-  const { restaurantId } = useLocationStore();
-  const current = restaurants?.find((r) => r.id === restaurantId) ?? restaurants?.[0];
+  const { restaurantId, place } = useLocationStore();
+  // The menu shown below: the restaurant last opened, else the closest, else the first.
+  const current = useMemo(() => {
+    const list = restaurants ?? [];
+    const visited = list.find((r) => r.id === restaurantId);
+    if (visited || !place) return visited ?? list[0];
+    const located = list.filter((r) => r.latitude != null && r.longitude != null);
+    const km = (r: (typeof list)[number]) => distanceKm(place, { lat: r.latitude!, lng: r.longitude! });
+    return located.sort((a, b) => km(a) - km(b))[0] ?? list[0];
+  }, [restaurants, restaurantId, place]);
   const { data: menu, isLoading: menuLoading } = useRestaurantMenu(current?.id);
   const add = useCartStore((s) => s.add);
   const [copied, setCopied] = useState(false);
@@ -43,6 +51,8 @@ export function RestaurantsPage() {
     return [...firsts, ...rest].slice(0, 4);
   }, [categories, menu]);
   const { data: marks } = useReviewSummaries((restaurants ?? []).map((r) => r.id));
+
+  const toFinder = () => document.getElementById('restaurants')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const goToMenu = (category?: string) => {
     if (!current) return;
@@ -82,7 +92,7 @@ export function RestaurantsPage() {
           </h1>
           <p className="mt-3 max-w-md text-white/80">Les repas de qualité, à côté de chez vous !</p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button variant="accent" className="px-6 py-3" onClick={() => goToMenu()}>
+            <Button variant="accent" className="px-6 py-3" onClick={toFinder}>
               Commander maintenant
             </Button>
             <Button
@@ -117,23 +127,7 @@ export function RestaurantsPage() {
       </section>
 
       <div className="mx-auto max-w-6xl space-y-14 px-4 py-10">
-        {/* ── Restaurants ── */}
-        <section aria-labelledby="restaurants-title">
-          <h2 id="restaurants-title" className="font-display text-2xl font-bold text-brand sm:text-3xl">
-            Nos restaurants
-          </h2>
-          <p className="mt-1 text-neutral-500">Choisissez le restaurant le plus proche de chez vous</p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {restaurants.map((r) => (
-              <RestaurantCard
-                key={r.id}
-                restaurant={r}
-                summary={marks?.get(r.id)}
-                onOpen={() => navigate(`/restaurants/${r.id}`)}
-              />
-            ))}
-          </div>
-        </section>
+        <RestaurantFinder restaurants={restaurants} marks={marks} />
 
         {/* ── Offers ── */}
         <section>
@@ -145,22 +139,33 @@ export function RestaurantsPage() {
               photo={PROMO_GREEN_PHOTO}
               title="20% de réduction sur votre première commande"
               subtitle={`Code promo : ${PROMO_CODE}`}
-              onClick={() => goToMenu()}
+              onClick={toFinder}
             />
             <OfferCard
               tone="accent"
               photo={PROMO_YELLOW_PHOTO}
               title="À emporter, sans frais"
               subtitle="Commandez en ligne et retirez au restaurant : aucun frais de livraison"
-              onClick={() => goToMenu()}
+              onClick={toFinder}
             />
           </div>
         </section>
 
         {/* ── Categories ── */}
         <section id="menu">
-          <h2 className="font-display text-2xl font-bold text-brand sm:text-3xl">Nos Menus</h2>
-          <p className="mt-1 text-neutral-500">Explorez nos différentes catégories</p>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-brand sm:text-3xl">Nos Menus</h2>
+              <p className="mt-1 text-neutral-500">
+                La carte de <strong className="text-brand">{current?.name}</strong>, par catégorie
+              </p>
+            </div>
+            {restaurants.length > 1 && (
+              <Button variant="ghost" onClick={toFinder} className="shrink-0 px-4 py-2 text-sm">
+                <Repeat size={15} aria-hidden /> Changer de restaurant
+              </Button>
+            )}
+          </div>
 
           {menuLoading ? (
             <div className="mt-6">
@@ -208,46 +213,6 @@ export function RestaurantsPage() {
         )}
       </div>
     </div>
-  );
-}
-
-function RestaurantCard({
-  restaurant,
-  summary,
-  onOpen,
-}: {
-  restaurant: Restaurant;
-  summary: ReviewSummary | undefined;
-  onOpen: () => void;
-}) {
-  const open = restaurant.isOpenNow !== false && restaurant.acceptingOrders !== false;
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex flex-col gap-2 rounded-2xl border border-brand/10 bg-white p-5 text-left transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="font-display text-lg font-bold text-brand">{restaurant.name}</h3>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-            open ? 'bg-brand-pale text-brand' : 'bg-neutral-100 text-neutral-500'
-          }`}
-        >
-          {open ? 'Ouvert' : 'Fermé'}
-        </span>
-      </div>
-      <p className="flex items-center gap-1.5 text-sm text-neutral-500">
-        <MapPin size={14} aria-hidden /> {restaurant.address}, {restaurant.city}
-      </p>
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
-        <RatingBadge summary={summary} />
-        <span className="flex items-center gap-1 text-xs text-neutral-500">
-          <Bike size={14} aria-hidden />
-          {restaurant.deliveryFeeCents ? formatPrice(restaurant.deliveryFeeCents) : 'Livraison offerte'}
-        </span>
-      </div>
-    </button>
   );
 }
 

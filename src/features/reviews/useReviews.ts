@@ -13,13 +13,18 @@ export function useRestaurantReviews(restaurantId: string | undefined) {
   });
 }
 
+const SUMMARIES_PER_REQUEST = 100;
+
 /** Marks of the restaurants on screen, by restaurant id. */
 export function useReviewSummaries(restaurantIds: string[]) {
   const ids = [...new Set(restaurantIds)].sort();
   return useQuery({
     queryKey: ['reviews', 'summaries', ids],
     queryFn: async () => {
-      const marks = await reviewsApi.summaries(ids);
+      // order-service answers for SUMMARIES_PER_REQUEST restaurants at a time.
+      const chunks: string[][] = [];
+      for (let i = 0; i < ids.length; i += SUMMARIES_PER_REQUEST) chunks.push(ids.slice(i, i + SUMMARIES_PER_REQUEST));
+      const marks = (await Promise.all(chunks.map((chunk) => reviewsApi.summaries(chunk)))).flat();
       return new Map<string, ReviewSummary>(marks.map((m) => [m.restaurant_id, m]));
     },
     enabled: ids.length > 0,
