@@ -58,6 +58,9 @@ const TRANSLATIONS: [RegExp, string | ((m: RegExpMatchArray) => string)][] = [
   [/this card must be registered again/i, 'Cette carte doit être enregistrée à nouveau avant de pouvoir servir.'],
   [/payment method not found|this card is not registered for your account|this payment method belongs to another user/i, "Cette carte n'est plus disponible. Choisissez-en une autre."],
 
+  // Restaurants (head office)
+  [/A restaurant with slug '([^']+)' already exists/i, (m) => `Un restaurant existe déjà avec cet identifiant (« ${m[1]} »). Choisissez un autre nom.`],
+
   // Catalog and stock (back office)
   [/item name is required|menu name is required|category name is required/i, 'Le nom est obligatoire.'],
   [/item category is required/i, 'Choisissez une catégorie.'],
