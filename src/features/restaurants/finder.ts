@@ -1,20 +1,10 @@
-import type { Restaurant } from './types/restaurant.types';
+import type { AddressSuggestion, Restaurant } from './types/restaurant.types';
 
-/** Where the customer is: a picked address or the browser's position. */
+/** Where the customer is: a picked town, postal code, address or the browser's position. */
 export interface Place {
   label: string;
   lat: number;
   lng: number;
-}
-
-export type SortKey = 'distance' | 'rating' | 'name';
-
-export interface FinderFilters {
-  text: string;
-  city: string;
-  openOnly: boolean;
-  deliversOnly: boolean;
-  sort: SortKey;
 }
 
 export interface FoundRestaurant {
@@ -49,51 +39,55 @@ export function isOpen(r: Restaurant): boolean {
   return r.isOpenNow !== false && r.acceptingOrders !== false;
 }
 
-function locate(r: Restaurant, place: Place | null): FoundRestaurant {
-  if (!place || r.latitude == null || r.longitude == null) return { restaurant: r, distanceKm: null, delivers: null };
-  const km = distanceKm(place, { lat: r.latitude, lng: r.longitude });
-  return { restaurant: r, distanceKm: km, delivers: r.deliveryRadiusKm ? km <= r.deliveryRadiusKm : null };
-}
-
-/** The cities served, most restaurants first. */
-export function citiesOf(restaurants: Restaurant[]): { city: string; count: number }[] {
-  const counts = new Map<string, number>();
-  restaurants.forEach((r) => counts.set(r.city, (counts.get(r.city) ?? 0) + 1));
-  return [...counts.entries()]
-    .map(([city, count]) => ({ city, count }))
-    .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city, 'fr'));
+/** Restaurants whose name, street or city contain what was typed. */
+export function matchRestaurants(restaurants: Restaurant[], text: string): Restaurant[] {
+  const q = fold(text);
+  if (!q) return [];
+  return restaurants.filter((r) => fold(`${r.name} ${r.address} ${r.city}`).includes(q));
 }
 
 /**
- * Filters and orders the restaurants. Text matches the name, street, city or
- * postal code; the closest come first once a place is known, the restaurants
- * without coordinates last.
+ * Beyond this, a place is far from every restaurant: a namesake abroad
+ * ("Rouen, Bulgarie"), not a big town without a restaurant yet (Lyon).
  */
-export function findRestaurants(
-  restaurants: Restaurant[],
-  filters: FinderFilters,
-  place: Place | null,
-  averageOf: (id: string) => number | undefined,
-): FoundRestaurant[] {
-  const text = fold(filters.text);
-  const found = restaurants
-    .filter((r) => !filters.city || r.city === filters.city)
-    .filter((r) => !filters.openOnly || isOpen(r))
-    .filter((r) => !text || fold(`${r.name} ${r.address} ${r.city}`).includes(text))
-    .map((r) => locate(r, place))
-    .filter((f) => !filters.deliversOnly || f.delivers === true);
+const FAR_FROM_NETWORK_KM = 1000;
 
-  const byName = (a: FoundRestaurant, b: FoundRestaurant) => a.restaurant.name.localeCompare(b.restaurant.name, 'fr');
-  const sorters: Record<SortKey, (a: FoundRestaurant, b: FoundRestaurant) => number> = {
-    distance: (a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity) || byName(a, b),
-    rating: (a, b) => (averageOf(b.restaurant.id) ?? 0) - (averageOf(a.restaurant.id) ?? 0) || byName(a, b),
-    name: byName,
-  };
-  const sort = filters.sort === 'distance' && !place ? 'rating' : filters.sort;
-  return found.sort(sorters[sort]);
+/**
+ * The geocoder matches loosely ("rouen" also brings a street of Dijon): keep
+ * the places naming every word typed, unless that leaves none. Places far
+ * from every restaurant ("Rouen, Bulgarie") come last.
+ */
+export function relevantPlaces(places: AddressSuggestion[], text: string, restaurants: Restaurant[] = []): AddressSuggestion[] {
+  const words = fold(text).split(' ').filter((w) => w.length >= 3);
+  const strict = places.filter((p) => words.every((w) => fold(p.label).includes(w)));
+  const kept = strict.length > 0 ? strict : places;
+  const located = restaurants.filter((r) => r.latitude != null && r.longitude != null);
+  if (located.length === 0) return kept;
+  const far = (p: AddressSuggestion) =>
+    located.every((r) => distanceKm({ lat: p.latitude, lng: p.longitude }, { lat: r.latitude!, lng: r.longitude! }) > FAR_FROM_NETWORK_KM);
+  return [...kept.filter((p) => !far(p)), ...kept.filter(far)];
 }
 
-/** "800 m", "2,4 km". */
+/**
+ * Every restaurant, the closest first once a place is known (those without
+ * coordinates last), else by city then name.
+ */
+export function listRestaurants(restaurants: Restaurant[], place: Place | null, openOnly: boolean): FoundRestaurant[] {
+  const byCityThenName = (a: FoundRestaurant, b: FoundRestaurant) =>
+    a.restaurant.city.localeCompare(b.restaurant.city, 'fr') || a.restaurant.name.localeCompare(b.restaurant.name, 'fr');
+  return restaurants
+    .filter((r) => !openOnly || isOpen(r))
+    .map((r): FoundRestaurant => {
+      if (!place || r.latitude == null || r.longitude == null) return { restaurant: r, distanceKm: null, delivers: null };
+      const km = distanceKm(place, { lat: r.latitude, lng: r.longitude });
+      return { restaurant: r, distanceKm: km, delivers: r.deliveryRadiusKm ? km <= r.deliveryRadiusKm : null };
+    })
+    .sort((a, b) =>
+      place ? (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity) || byCityThenName(a, b) : byCityThenName(a, b),
+    );
+}
+
+/** "800 m", "2,4 km", "112 km". */
 export function formatDistance(km: number): string {
   if (km < 1) return `${Math.max(100, Math.round(km * 10) * 100)} m`;
   return `${km.toLocaleString('fr-FR', { maximumFractionDigits: km < 10 ? 1 : 0 })} km`;

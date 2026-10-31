@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Minus, MapPin, Plus, Trash2 } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Clock, Minus, MapPin, Plus, Store, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { formatPrice } from '../utils/format';
@@ -81,7 +81,8 @@ export function CartPage() {
   const subtotal = totalCents();
   const discount = appliedPromo ? Math.floor((subtotal * appliedPromo.percentOff) / 100) : 0;
   // The server computes the amount charged; this mirrors it for display.
-  const deliveryFee = isPickup ? 0 : (quote?.deliveryFeeCents ?? 0);
+  // Before the address is quoted, the restaurant's own fee (never a false "Offerts").
+  const deliveryFee = isPickup ? 0 : (quote?.deliveryFeeCents ?? restaurant?.deliveryFeeCents ?? 0);
   const total = Math.max(0, subtotal - discount) + deliveryFee + tipCents;
   const belowMinimum = !isPickup && !!quote && subtotal - discount < quote.minimumOrderCents;
   const refusal = quote && !quote.canOrder ? (REFUSALS[quote.refusal ?? ''] ?? REFUSALS.INACTIVE) : null;
@@ -166,7 +167,7 @@ export function CartPage() {
       <div className="border-b border-brand/10 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-3">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(restaurantId ? `/restaurants/${restaurantId}` : '/')}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand"
           >
             <ArrowLeft size={16} /> Continuer mes achats
@@ -180,9 +181,28 @@ export function CartPage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-4">
             <div className="rounded-2xl border border-brand/10 bg-white">
-              <p className="border-b border-brand/10 px-5 py-4 text-sm font-semibold text-neutral-500">
-                Articles ({lines.length})
-              </p>
+              <div className="flex flex-wrap items-center gap-3 border-b border-brand/10 px-5 py-4">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-pale text-brand">
+                  <Store size={18} aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Votre commande chez</p>
+                  <p className="truncate font-display text-lg font-bold text-brand">
+                    {restaurant?.name ?? restaurantName}
+                  </p>
+                  {restaurant && (
+                    <p className="truncate text-xs text-neutral-500">
+                      {restaurant.address}, {restaurant.city}
+                    </p>
+                  )}
+                </div>
+                {restaurantId && (
+                  <Link to={`/restaurants/${restaurantId}`} className="text-sm font-semibold text-brand hover:underline">
+                    Voir la carte
+                  </Link>
+                )}
+              </div>
+              <p className="px-5 pt-3 text-sm font-semibold text-neutral-500">Articles ({lines.length})</p>
               <div className="divide-y divide-brand/10">
                 {lines.map((line) => (
                   <div key={line.item.id} className="flex items-center gap-4 px-5 py-4">

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Bike, Clock, MapPin, ShoppingBag } from 'lucide-react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Bike, Clock, MapPin, ShoppingBag, ShoppingCart, X } from 'lucide-react';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { FavoriteButton } from '../components/FavoriteButton';
+import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
 import { useRestaurantMenu, useRestaurantMenuPlans } from '../features/catalog/hooks/useMenu';
 import type { MenuItem, MenuPlan } from '../features/catalog/types/menu.types';
@@ -14,7 +15,7 @@ import { RatingBadge, RestaurantReviews, useReviewSummaries } from '../features/
 import { AllergenList } from '../features/catalog/components/AllergenList';
 import { formatPhone, formatPrice } from '../utils/format';
 import { useCartStore } from '../store/cartStore';
-import { useLocationStore } from '../store/locationStore';
+import { fold } from '../features/restaurants/finder';
 import { dishPhoto } from '../utils/images';
 
 const ALL = 'Tous';
@@ -43,25 +44,23 @@ function planAsItem(plan: MenuPlan, dishes: MenuItem[]): MenuItem {
 
 export function RestaurantMenuPage() {
   const { id: restaurantId } = useParams();
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: menu, isLoading } = useRestaurantMenu(restaurantId);
   const { data: plans } = useRestaurantMenuPlans(restaurantId);
   const { data: restaurants } = useRestaurants();
   const { data: marks } = useReviewSummaries(restaurantId ? [restaurantId] : []);
-  const add = useCartStore((s) => s.add);
+  const cart = useCartStore();
   const [category, setCategory] = useState<string>(searchParams.get('category') ?? ALL);
-  const query = (searchParams.get('q') ?? '').toLowerCase();
+  const rawQuery = searchParams.get('q') ?? '';
+  const query = fold(rawQuery);
+  // A dish of another restaurant waits for the customer to agree to empty the cart.
+  const [pending, setPending] = useState<MenuItem | null>(null);
 
   useEffect(() => {
     const fromUrl = searchParams.get('category');
     if (fromUrl) setCategory(fromUrl);
   }, [searchParams]);
-
-  // The homepage and the header search follow the restaurant last opened.
-  const remember = useLocationStore((s) => s.setRestaurantId);
-  useEffect(() => {
-    if (restaurantId) remember(restaurantId);
-  }, [restaurantId, remember]);
 
   const restaurant = restaurants?.find((r) => r.id === restaurantId);
   const catalog = useMemo(() => {
@@ -74,14 +73,28 @@ export function RestaurantMenuPage() {
   if (isLoading) return <Spinner label="Chargement du menu…" />;
 
   const items = (category === ALL ? catalog : catalog.filter((m) => m.category === category)).filter(
-    (m) => !query || m.name.toLowerCase().includes(query) || m.description.toLowerCase().includes(query),
+    (m) => !query || fold(`${m.name} ${m.description} ${m.category}`).includes(query),
   );
   const closed = !!restaurant && (restaurant.isOpenNow === false || restaurant.acceptingOrders === false);
+  const cartHere = cart.restaurantId === restaurantId && cart.lines.length > 0;
+  const cartElsewhere = !!cart.restaurantId && cart.restaurantId !== restaurantId && cart.lines.length > 0;
+
+  const addToCart = (item: MenuItem) => {
+    if (!restaurant) return;
+    if (cartElsewhere) setPending(item);
+    else cart.add(item, { id: restaurant.id, name: restaurant.name });
+  };
+
+  const clearQuery = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('q');
+    setSearchParams(next, { replace: true });
+  };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <div className={`mx-auto max-w-6xl space-y-6 px-4 py-8 ${cartHere ? 'pb-28' : ''}`}>
       <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand">
-        <ArrowLeft size={16} /> Retour à l’accueil
+        <ArrowLeft size={16} /> Tous les restaurants
       </Link>
 
       <header className="brand-texture overflow-hidden rounded-3xl bg-brand px-6 py-7 text-white sm:px-8">
@@ -132,6 +145,19 @@ export function RestaurantMenuPage() {
             ))}
           </div>
 
+          {rawQuery && (
+            <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
+              Plats correspondant à « <strong className="text-brand">{rawQuery}</strong> »
+              <button
+                type="button"
+                onClick={clearQuery}
+                className="inline-flex items-center gap-1 rounded-full border border-brand/20 bg-white px-3 py-1 font-semibold text-brand transition hover:bg-brand-pale"
+              >
+                <X size={14} aria-hidden /> Voir toute la carte
+              </button>
+            </p>
+          )}
+
           {items.length === 0 ? (
             <EmptyState icon="🔍" title="Aucun résultat" hint="Essayez une autre recherche ou catégorie." />
           ) : (
@@ -142,7 +168,7 @@ export function RestaurantMenuPage() {
                   item={item}
                   index={i}
                   disabled={closed}
-                  onAdd={() => restaurant && add(item, { id: restaurant.id, name: restaurant.name })}
+                  onAdd={() => addToCart(item)}
                 />
               ))}
             </div>
@@ -155,6 +181,45 @@ export function RestaurantMenuPage() {
       )}
 
       {restaurantId && <RestaurantReviews restaurantId={restaurantId} />}
+
+      {cartHere && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-brand/10 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+            <p className="text-sm text-neutral-600">
+              <strong className="text-brand">{cart.count()} article{cart.count() > 1 ? 's' : ''}</strong> ·{' '}
+              {formatPrice(cart.totalCents())}
+            </p>
+            <Button variant="accent" onClick={() => navigate('/cart')} className="px-5 py-2.5">
+              <ShoppingCart size={18} aria-hidden /> Voir mon panier
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {pending && restaurant && (
+        <Modal title="Commencer un nouveau panier ?" onClose={() => setPending(null)} maxWidth="max-w-md">
+          <div className="space-y-4 p-5">
+            <p className="text-sm text-neutral-600">
+              Votre panier contient des plats de <strong className="text-brand">{cart.restaurantName}</strong>. Une
+              commande se passe auprès d’un seul restaurant : vider le panier pour commander chez{' '}
+              <strong className="text-brand">{restaurant.name}</strong> ?
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="ghost" onClick={() => setPending(null)}>
+                Garder mon panier
+              </Button>
+              <Button
+                onClick={() => {
+                  cart.add(pending, { id: restaurant.id, name: restaurant.name });
+                  setPending(null);
+                }}
+              >
+                Vider et ajouter
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
