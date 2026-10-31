@@ -219,7 +219,7 @@ export function OrderDetailPage() {
       {/* Timeline */}
       {order.status !== 'CANCELLED' && (
         <Card>
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between">
             {TIMELINE.map((step, i) => {
               const done = currentIndex >= i;
               return (
