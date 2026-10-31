@@ -1,6 +1,7 @@
 import { http } from '../../../services/http';
 import type {
   Category,
+  DishMatch,
   MenuItem,
   MenuItemDto,
   MenuItemForm,
@@ -72,6 +73,13 @@ export const menuApi = {
   byRestaurant: async (restaurantId: string): Promise<MenuItem[]> => {
     const dtos = await http<MenuItemDto[]>(`/api/menu?restaurantId=${restaurantId}`);
     return dtos.map(toMenuItem);
+  },
+
+  /** Public: dishes of the whole network matching q, each with the
+   *  restaurants that hid it (a global dish is offered everywhere else). */
+  search: async (q: string): Promise<DishMatch[]> => {
+    const dtos = await http<(MenuItemDto & { hidden_in: string[] })[]>(`/api/menu/search?q=${encodeURIComponent(q)}`);
+    return dtos.map((d) => ({ item: toMenuItem(d), hiddenIn: d.hidden_in ?? [] }));
   },
 
   /** Public: resolves a set of item ids (e.g. a customer's favorited dishes). */

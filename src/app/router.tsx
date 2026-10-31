@@ -13,6 +13,7 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { RestaurantsPage } from '../pages/RestaurantsPage';
 import { RestaurantMenuPage } from '../pages/RestaurantMenuPage';
+import { SearchPage } from '../pages/SearchPage';
 import { CartPage } from '../pages/CartPage';
 import { MyOrdersPage } from '../pages/MyOrdersPage';
 import { OrderDetailPage } from '../pages/OrderDetailPage';
@@ -57,6 +58,7 @@ export function AppRouter() {
       <Route element={<StorefrontLayout />}>
         <Route index element={<RestaurantsPage />} />
         <Route path="restaurants/:id" element={<RestaurantMenuPage />} />
+        <Route path="search" element={<SearchPage />} />
         <Route path="cart" element={<CartPage />} />
         <Route
           path="orders"

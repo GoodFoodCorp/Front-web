@@ -1,23 +1,38 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Bike, LocateFixed, MapPin, Search, ShoppingBag, X } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Bike, LocateFixed, MapPin, Search, ShoppingBag, Store, X } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { EmptyState } from '../../../components/EmptyState';
-import { Select } from '../../../components/Select';
 import { RatingBadge } from '../../reviews';
 import type { ReviewSummary } from '../../reviews/reviewsApi';
 import { useLocationStore } from '../../../store/locationStore';
 import { formatPrice } from '../../../utils/format';
-import { citiesOf, findRestaurants, formatDistance, isOpen, type FoundRestaurant, type SortKey } from '../finder';
-import type { Restaurant } from '../types/restaurant.types';
-import { AddressAutocomplete } from './AddressAutocomplete';
+import { restaurantsApi } from '../api/restaurantsApi';
+import {
+  formatDistance,
+  isOpen,
+  listRestaurants,
+  matchRestaurants,
+  relevantPlaces,
+  type FoundRestaurant,
+  type Place,
+} from '../finder';
+import type { AddressSuggestion, Restaurant } from '../types/restaurant.types';
 
 const PAGE_SIZE = 9;
+const MAX_RESTAURANT_OPTIONS = 4;
+const MIN_PLACE_CHARS = 3;
+const DEBOUNCE_MS = 250;
+
+type Option = { kind: 'restaurant'; restaurant: Restaurant } | { kind: 'place'; place: AddressSuggestion };
 
 /**
- * Finds a restaurant among many: from an address or the browser's position
- * (closest first, which ones deliver there), by name, street, city or postal
- * code, open now only. `?q=` (the header search) prefills the text.
+ * One field to find a restaurant: typing proposes the restaurants by name,
+ * street or city, and the places (town, postal code, address) to list the
+ * closest ones from; "Autour de moi" uses the browser's position. The list
+ * below then goes from the closest to the farthest, with the distance and
+ * whether the restaurant delivers there.
  */
 export function RestaurantFinder({
   restaurants,
@@ -27,211 +42,277 @@ export function RestaurantFinder({
   marks: Map<string, ReviewSummary> | undefined;
 }) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { place, setPlace } = useLocationStore();
-  const [address, setAddress] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listId = useId();
+
+  const [text, setText] = useState('');
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState('');
-  const [text, setText] = useState(searchParams.get('q') ?? '');
-  const [city, setCity] = useState('');
   const [openOnly, setOpenOnly] = useState(false);
-  const [deliversOnly, setDeliversOnly] = useState(false);
-  const [sort, setSort] = useState<SortKey>(place ? 'distance' : 'rating');
-  const [more, setMore] = useState({ key: '', limit: PAGE_SIZE });
+  const [shown, setShown] = useState({ key: '', count: PAGE_SIZE });
 
-  // The header search lands here: show its matches.
-  const q = searchParams.get('q');
+  // Asks the geocoder once typing pauses.
   useEffect(() => {
-    if (q === null) return;
-    setText(q);
-    document.getElementById('restaurants')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [q]);
+    const timer = setTimeout(() => setQuery(text.trim()), DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [text]);
 
-  const choosePlace = (next: { label: string; lat: number; lng: number } | null) => {
+  const placesQuery = useQuery({
+    queryKey: ['place-suggestions', query],
+    queryFn: () => restaurantsApi.suggestPlaces(query),
+    enabled: query.length >= MIN_PLACE_CHARS,
+    staleTime: 5 * 60_000,
+  });
+
+  const options: Option[] = useMemo(() => {
+    const byName = matchRestaurants(restaurants, text)
+      .slice(0, MAX_RESTAURANT_OPTIONS)
+      .map((restaurant) => ({ kind: 'restaurant' as const, restaurant }));
+    const places =
+      query.length >= MIN_PLACE_CHARS && query === text.trim()
+        ? relevantPlaces(placesQuery.data ?? [], query, restaurants).map((p) => ({ kind: 'place' as const, place: p }))
+        : [];
+    return [...byName, ...places];
+  }, [restaurants, text, query, placesQuery.data]);
+
+  const choosePlace = (next: Place | null) => {
     setPlace(next);
-    setSort(next ? 'distance' : 'rating');
-    if (!next) setDeliversOnly(false);
+    setText('');
+    setOpen(false);
+    setLocateError('');
+  };
+
+  const pick = (option: Option | undefined) => {
+    if (!option) return;
+    if (option.kind === 'restaurant') {
+      setOpen(false);
+      navigate(`/restaurants/${option.restaurant.id}`);
+    } else {
+      choosePlace({ label: option.place.label, lat: option.place.latitude, lng: option.place.longitude });
+    }
   };
 
   const locateMe = () => {
     setLocateError('');
     if (!('geolocation' in navigator)) {
-      setLocateError('Votre navigateur ne permet pas de vous localiser : saisissez votre adresse.');
+      setLocateError('Votre navigateur ne permet pas de vous localiser : tapez votre ville ou votre adresse.');
       return;
     }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
-        choosePlace({ label: 'Ma position actuelle', lat: pos.coords.latitude, lng: pos.coords.longitude });
+        choosePlace({ label: 'votre position', lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
       () => {
         setLocating(false);
-        setLocateError('Position indisponible (autorisation refusée ?) : saisissez votre adresse.');
+        setLocateError('Position indisponible (autorisation refusée ?) : tapez votre ville ou votre adresse.');
       },
       { timeout: 10_000, maximumAge: 5 * 60_000 },
     );
   };
 
-  const cities = useMemo(() => citiesOf(restaurants), [restaurants]);
-  const filters = { text, city, openOnly, deliversOnly, sort };
-  const found = useMemo(
-    () => findRestaurants(restaurants, { text, city, openOnly, deliversOnly, sort }, place, (id) => marks?.get(id)?.average),
-    [restaurants, text, city, openOnly, deliversOnly, sort, place, marks],
-  );
-  // A new search starts again from the first page.
-  const key = JSON.stringify([filters, place]);
-  const limit = more.key === key ? more.limit : PAGE_SIZE;
-  const filtered = text !== '' || city !== '' || openOnly || deliversOnly;
-  const reset = () => {
-    setText('');
-    setCity('');
-    setOpenOnly(false);
-    setDeliversOnly(false);
-  };
+  const found = useMemo(() => listRestaurants(restaurants, place, openOnly), [restaurants, place, openOnly]);
+  // A new place or filter starts again from the first page.
+  const key = `${place?.lat},${place?.lng},${openOnly}`;
+  const count = shown.key === key ? shown.count : PAGE_SIZE;
 
-  const sortOptions = [
-    ...(place ? [{ value: 'distance', label: 'Les plus proches' }] : []),
-    { value: 'rating', label: 'Les mieux notés' },
-    { value: 'name', label: 'Par nom (A → Z)' },
-  ];
+  const typing = text.trim().length > 0;
+  const waiting = typing && (query !== text.trim() || placesQuery.isFetching);
+  const showList = open && typing;
 
   return (
     <section id="restaurants" aria-labelledby="restaurants-title" className="scroll-mt-24">
       <h2 id="restaurants-title" className="font-display text-2xl font-bold text-brand sm:text-3xl">
-        Nos restaurants
+        Trouver un restaurant
       </h2>
-      <p className="mt-1 text-neutral-500">
-        Indiquez votre adresse pour voir les restaurants qui vous livrent, du plus proche au plus loin.
-      </p>
+      <p className="mt-1 text-neutral-500">Tapez votre ville, votre code postal ou votre adresse.</p>
 
-      <div className="mt-5 space-y-3 rounded-2xl border border-brand/10 bg-white p-4">
-        {place ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl bg-brand-pale px-4 py-2.5 text-sm text-brand">
-            <MapPin size={16} aria-hidden className="shrink-0" />
-            <span className="min-w-0 flex-1 truncate">
-              Autour de : <strong>{place.label}</strong>
-            </span>
-            <button
-              type="button"
-              onClick={() => choosePlace(null)}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-semibold transition hover:bg-white"
-            >
-              <X size={14} aria-hidden /> Changer d’adresse
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="flex-1">
-              <label htmlFor="finder-address" className="sr-only">
-                Votre adresse
-              </label>
-              <AddressAutocomplete
-                id="finder-address"
-                value={address}
-                onChange={setAddress}
-                onSelect={(s) => {
-                  setAddress('');
-                  choosePlace({ label: s.label, lat: s.latitude, lng: s.longitude });
-                }}
-                placeholder="Votre adresse de livraison"
-              />
-            </div>
-            <Button variant="ghost" onClick={locateMe} disabled={locating} className="shrink-0">
-              <LocateFixed size={16} aria-hidden />
-              {locating ? 'Localisation…' : 'Autour de moi'}
-            </Button>
-          </div>
-        )}
-        {locateError && (
-          <p role="alert" className="text-sm text-red-600">
-            {locateError}
-          </p>
-        )}
-
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-          <div className="flex items-center gap-2 rounded-xl border border-brand/15 bg-white px-4 py-2.5 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
-            <Search size={16} aria-hidden className="shrink-0 text-neutral-400" />
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <div className="flex items-center gap-2 rounded-xl border border-brand/15 bg-white px-4 py-3 shadow-sm focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+            <Search size={18} aria-hidden className="shrink-0 text-neutral-400" />
             <input
-              type="search"
+              ref={inputRef}
+              role="combobox"
+              aria-expanded={showList}
+              aria-controls={listId}
+              aria-autocomplete="list"
+              aria-activedescendant={showList && options[active] ? `${listId}-${active}` : undefined}
+              aria-label="Ville, code postal, adresse ou nom du restaurant"
+              autoComplete="off"
               value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Nom, rue, ville ou code postal"
-              aria-label="Rechercher un restaurant"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
+              placeholder="Ex. : Rouen, 75006, 12 rue de Rivoli…"
+              onChange={(e) => {
+                setText(e.target.value);
+                setOpen(true);
+                setActive(0);
+              }}
+              onFocus={() => setOpen(true)}
+              onBlur={() => setTimeout(() => setOpen(false), 150)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown' && options.length) {
+                  e.preventDefault();
+                  setOpen(true);
+                  setActive((i) => (i + 1) % options.length);
+                } else if (e.key === 'ArrowUp' && options.length) {
+                  e.preventDefault();
+                  setActive((i) => (i <= 0 ? options.length - 1 : i - 1));
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  pick(options[active] ?? options[0]);
+                } else if (e.key === 'Escape') {
+                  setOpen(false);
+                }
+              }}
+              className="w-full bg-transparent text-base outline-none placeholder:text-neutral-400"
             />
+            {text && (
+              <button
+                type="button"
+                aria-label="Effacer"
+                onClick={() => {
+                  setText('');
+                  inputRef.current?.focus();
+                }}
+                className="shrink-0 rounded-full p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-600"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
-          <Select
-            aria-label="Ville"
-            value={city}
-            onChange={setCity}
-            className="sm:w-52"
-            options={[
-              { value: '', label: 'Toutes les villes', hint: `${restaurants.length} restaurants` },
-              ...cities.map((c) => ({
-                value: c.city,
-                label: c.city,
-                hint: `${c.count} restaurant${c.count > 1 ? 's' : ''}`,
-              })),
-            ]}
-          />
-          <Select
-            aria-label="Trier"
-            value={sort}
-            onChange={(v) => setSort(v as SortKey)}
-            className="sm:w-48"
-            options={sortOptions}
-          />
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Chip pressed={openOnly} onToggle={() => setOpenOnly((v) => !v)}>
-            Ouverts maintenant
-          </Chip>
-          {place && (
-            <Chip pressed={deliversOnly} onToggle={() => setDeliversOnly((v) => !v)}>
-              Me livrent
-            </Chip>
+          {showList && (
+            <ul
+              id={listId}
+              role="listbox"
+              className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-brand/10 bg-white py-1 shadow-[var(--shadow-lift)]"
+            >
+              {options.map((option, i) => {
+                const first = i === 0 || options[i - 1].kind !== option.kind;
+                return (
+                  <li key={option.kind === 'restaurant' ? option.restaurant.id : option.place.label} role="presentation">
+                    {first && (
+                      <p className="px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+                        {option.kind === 'restaurant' ? 'Restaurants' : 'Voir les restaurants proches de…'}
+                      </p>
+                    )}
+                    <div
+                      id={`${listId}-${i}`}
+                      role="option"
+                      aria-selected={i === active}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        pick(option);
+                      }}
+                      onMouseEnter={() => setActive(i)}
+                      className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 ${i === active ? 'bg-brand-pale' : ''}`}
+                    >
+                      {option.kind === 'restaurant' ? (
+                        <>
+                          <Store size={18} aria-hidden className="shrink-0 text-brand" />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-brand">{option.restaurant.name}</span>
+                            <span className="block truncate text-xs text-neutral-500">
+                              {option.restaurant.address}, {option.restaurant.city}
+                            </span>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <MapPin size={18} aria-hidden className="shrink-0 text-neutral-500" />
+                          <span className="truncate text-sm text-neutral-700">{option.place.label}</span>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+              {options.length === 0 && (
+                <li className="px-4 py-3 text-sm text-neutral-500">
+                  {waiting
+                    ? 'Recherche…'
+                    : text.trim().length < MIN_PLACE_CHARS
+                      ? 'Continuez à taper…'
+                      : 'Aucun résultat : essayez une ville ou un code postal.'}
+                </li>
+              )}
+            </ul>
           )}
-          {filtered && (
-            <button type="button" onClick={reset} className="text-sm font-semibold text-brand underline-offset-2 hover:underline">
-              Effacer les filtres
-            </button>
-          )}
-          <p className="ml-auto text-sm text-neutral-500" aria-live="polite">
-            {found.length} restaurant{found.length > 1 ? 's' : ''}
-          </p>
         </div>
+        <Button variant="ghost" onClick={locateMe} disabled={locating} className="shrink-0 py-3">
+          <LocateFixed size={18} aria-hidden />
+          {locating ? 'Localisation…' : 'Autour de moi'}
+        </Button>
+      </div>
+      {locateError && (
+        <p role="alert" className="mt-2 text-sm text-red-600">
+          {locateError}
+        </p>
+      )}
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <p className="min-w-0 flex-1 font-semibold text-neutral-700" aria-live="polite">
+          {place ? (
+            <>
+              Les plus proches de <span className="text-brand">{place.label}</span>
+            </>
+          ) : (
+            `Tous nos restaurants (${restaurants.length})`
+          )}
+        </p>
+        {place && (
+          <button
+            type="button"
+            onClick={() => choosePlace(null)}
+            className="inline-flex items-center gap-1 text-sm font-semibold text-brand underline-offset-2 hover:underline"
+          >
+            <X size={14} aria-hidden /> Effacer le lieu
+          </button>
+        )}
+        <button
+          type="button"
+          aria-pressed={openOnly}
+          onClick={() => setOpenOnly((v) => !v)}
+          className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+            openOnly ? 'border-brand bg-brand text-white' : 'border-brand/20 bg-white text-brand hover:bg-brand-pale'
+          }`}
+        >
+          Ouverts maintenant
+        </button>
       </div>
 
       {found.length === 0 ? (
-        <div className="mt-5">
-          <EmptyState
-            icon="🔎"
-            title="Aucun restaurant ne correspond"
-            hint={deliversOnly ? 'Aucun restaurant ne livre encore cette adresse : la vente à emporter reste possible.' : 'Essayez une autre ville ou un autre nom.'}
-          />
-          {filtered && (
-            <div className="mt-3 text-center">
-              <Button variant="ghost" onClick={reset}>
-                Voir tous les restaurants
-              </Button>
-            </div>
-          )}
+        <div className="mt-4">
+          <EmptyState icon="🌙" title="Aucun restaurant ouvert en ce moment" hint="Revenez un peu plus tard." />
+          <div className="mt-3 text-center">
+            <Button variant="ghost" onClick={() => setOpenOnly(false)}>
+              Voir tous les restaurants
+            </Button>
+          </div>
         </div>
       ) : (
         <>
-          <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {found.slice(0, limit).map((f) => (
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {found.slice(0, count).map((f, i) => (
               <li key={f.restaurant.id} className="flex">
-                <RestaurantCard found={f} summary={marks?.get(f.restaurant.id)} onOpen={() => navigate(`/restaurants/${f.restaurant.id}`)} />
+                <RestaurantCard
+                  found={f}
+                  closest={!!place && i === 0 && f.distanceKm !== null}
+                  summary={marks?.get(f.restaurant.id)}
+                  onOpen={() => navigate(`/restaurants/${f.restaurant.id}`)}
+                />
               </li>
             ))}
           </ul>
-          {found.length > limit && (
+          {found.length > count && (
             <div className="mt-5 text-center">
-              <Button variant="ghost" onClick={() => setMore({ key, limit: limit + PAGE_SIZE })}>
-                Voir plus de restaurants ({found.length - limit} autres)
+              <Button variant="ghost" onClick={() => setShown({ key, count: count + PAGE_SIZE })}>
+                Voir plus de restaurants ({found.length - count} autres)
               </Button>
             </div>
           )}
@@ -241,27 +322,14 @@ export function RestaurantFinder({
   );
 }
 
-function Chip({ pressed, onToggle, children }: { pressed: boolean; onToggle: () => void; children: string }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      onClick={onToggle}
-      className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
-        pressed ? 'border-brand bg-brand text-white' : 'border-brand/20 bg-white text-brand hover:bg-brand-pale'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 function RestaurantCard({
   found: { restaurant, distanceKm, delivers },
+  closest,
   summary,
   onOpen,
 }: {
   found: FoundRestaurant;
+  closest: boolean;
   summary: ReviewSummary | undefined;
   onOpen: () => void;
 }) {
@@ -270,8 +338,13 @@ function RestaurantCard({
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full flex-col gap-2 rounded-2xl border border-brand/10 bg-white p-5 text-left transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+      className={`flex w-full flex-col gap-2 rounded-2xl border bg-white p-5 text-left transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+        closest ? 'border-brand/40 ring-1 ring-brand/20' : 'border-brand/10'
+      }`}
     >
+      {closest && (
+        <span className="w-fit rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold text-brand-dark">Le plus proche</span>
+      )}
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-display text-lg font-bold text-brand">{restaurant.name}</h3>
         <span
@@ -293,7 +366,7 @@ function RestaurantCard({
         <RatingBadge summary={summary} />
         {delivers === false ? (
           <span className="flex items-center gap-1 text-xs text-neutral-500">
-            <ShoppingBag size={14} aria-hidden /> À emporter (hors zone)
+            <ShoppingBag size={14} aria-hidden /> Trop loin pour livrer · à emporter
           </span>
         ) : (
           <span className="flex items-center gap-1 text-xs text-neutral-500">

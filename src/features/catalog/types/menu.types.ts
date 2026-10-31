@@ -116,3 +116,9 @@ export interface RecipeDto {
   menu_item_id: string;
   lines: RecipeLineDto[] | null;
 }
+
+/** A dish found by the search, with the restaurants that hid it (global dish). */
+export interface DishMatch {
+  item: MenuItem;
+  hiddenIn: string[];
+}

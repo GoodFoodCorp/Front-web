@@ -11,6 +11,17 @@ export function useRestaurantMenu(restaurantId: string | undefined) {
   });
 }
 
+/** Customer: a dish in every restaurant serving it (2 characters at least). */
+export function useDishSearch(q: string) {
+  const query = q.trim();
+  return useQuery({
+    queryKey: ['menu', 'search', query.toLowerCase()],
+    queryFn: () => menuApi.search(query),
+    enabled: query.length >= 2,
+    staleTime: 60_000,
+  });
+}
+
 /** Public: resolves a set of dish ids (e.g. a customer's favorited dishes). */
 export function useMenuItemsByIds(ids: string[]) {
   return useQuery({

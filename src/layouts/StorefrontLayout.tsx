@@ -1,22 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { CalendarDays, LogOut, Package, Search, ShoppingCart, Store, Truck, User } from 'lucide-react';
+import { CalendarDays, LogOut, Package, Search, ShoppingCart, Store, Truck, User, UtensilsCrossed } from 'lucide-react';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
 import { useLocationStore } from '../store/locationStore';
 import { useLogout } from '../features/auth/hooks/useAuth';
 import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
-import { useRestaurantMenu } from '../features/catalog/hooks/useMenu';
-import type { MenuItem } from '../features/catalog/types/menu.types';
-import { fold } from '../features/restaurants/finder';
-import type { Restaurant } from '../features/restaurants/types/restaurant.types';
+import { useDishSearch } from '../features/catalog/hooks/useMenu';
+import { groupDishes } from '../features/catalog/dishSearch';
+import { matchRestaurants } from '../features/restaurants/finder';
 import { Footer } from '../components/Footer';
 import logo from '../assets/logo.svg';
 import { formatPrice } from '../utils/format';
-import { dishPhoto } from '../utils/images';
 
-const MAX_SUGGESTIONS = 4;
+const MAX_RESTAURANTS = 3;
+const MAX_DISHES = 4;
+const DEBOUNCE_MS = 250;
 
 export function StorefrontLayout() {
   const navigate = useNavigate();
@@ -24,57 +24,38 @@ export function StorefrontLayout() {
   const count = useCartStore((s) => s.count());
   const { userId, email, roles } = useAuthStore();
   const isLoggedIn = userId !== null;
-  const { data: restaurants } = useRestaurants();
-  const restaurantId = useLocationStore((s) => s.restaurantId);
+  const { data: restaurants = [] } = useRestaurants();
+  const place = useLocationStore((s) => s.place);
 
   const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
-  // Restaurants are searched everywhere, dishes in the restaurant last opened.
-  const current = restaurants?.find((r) => r.id === restaurantId);
-  const { data: currentMenu } = useRestaurantMenu(current?.id);
+  // Dishes are searched in every restaurant once typing pauses.
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search.trim()), DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const { data: matches } = useDishSearch(query);
 
-  const query = fold(search);
-  const restaurantMatches = useMemo(() => {
-    if (!query) return [];
-    return (restaurants ?? []).filter((r) => fold(`${r.name} ${r.address} ${r.city}`).includes(query));
-  }, [restaurants, query]);
-  const dishMatches = useMemo(() => {
-    if (!query) return [];
-    return (currentMenu ?? []).filter((item) => fold(`${item.name} ${item.category}`).includes(query));
-  }, [currentMenu, query]);
+  const restaurantMatches = useMemo(() => matchRestaurants(restaurants, search), [restaurants, search]);
+  const dishMatches = useMemo(
+    () => (query.length >= 2 ? groupDishes(matches ?? [], restaurants, place) : []),
+    [matches, restaurants, place, query],
+  );
 
-  const closeSearch = () => setSearchOpen(false);
-
-  const showRestaurants = (q: string) => {
-    closeSearch();
-    navigate(q ? `/?q=${encodeURIComponent(q)}` : '/');
+  const goToResults = (q: string) => {
+    setSearchOpen(false);
+    navigate(`/search?q=${encodeURIComponent(q)}`);
   };
 
-  /** Enter: the matching restaurants, or the dishes when only dishes match. */
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const q = search.trim();
-    if (current && restaurantMatches.length === 0 && dishMatches.length > 0) {
-      closeSearch();
-      navigate(`/restaurants/${current.id}?q=${encodeURIComponent(q)}`);
-    } else {
-      showRestaurants(q);
-    }
+    if (search.trim()) goToResults(search.trim());
   };
 
-  const openRestaurant = (r: Restaurant) => {
-    setSearch('');
-    closeSearch();
-    navigate(`/restaurants/${r.id}`);
-  };
-
-  const pickDish = (restaurant: Restaurant, item: MenuItem) => {
-    setSearch(item.name);
-    closeSearch();
-    navigate(`/restaurants/${restaurant.id}?q=${encodeURIComponent(item.name)}`);
-  };
+  const typed = search.trim().length > 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-cream">
@@ -103,74 +84,84 @@ export function StorefrontLayout() {
                   }}
                   onFocus={() => setSearchOpen(true)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Escape') closeSearch();
+                    if (e.key === 'Escape') setSearchOpen(false);
                   }}
-                  placeholder="Restaurant, ville, plat…"
-                  aria-label="Rechercher un restaurant ou un plat"
+                  placeholder="Un plat, un restaurant…"
+                  aria-label="Rechercher un plat ou un restaurant"
                   className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-neutral-400"
                 />
               </div>
             </form>
 
-            {searchOpen && query && (
+            {searchOpen && typed && (
               <>
-                <button aria-label="Fermer" className="fixed inset-0 z-30 cursor-default" onClick={closeSearch} />
+                <button
+                  aria-label="Fermer"
+                  className="fixed inset-0 z-30 cursor-default"
+                  onClick={() => setSearchOpen(false)}
+                />
                 <div className="animate-dropdown absolute left-0 right-0 z-40 mt-2 origin-top overflow-hidden rounded-xl border border-brand/10 bg-white py-1 text-ink shadow-[var(--shadow-lift)]">
-                  {restaurantMatches.length === 0 && dishMatches.length === 0 ? (
-                    <p className="px-4 py-3 text-sm text-neutral-400">Aucun résultat pour « {search.trim()} »</p>
-                  ) : (
-                    <>
-                      {restaurantMatches.length > 0 && <SuggestionHeading>Restaurants</SuggestionHeading>}
-                      {restaurantMatches.slice(0, MAX_SUGGESTIONS).map((r) => (
-                        <button
-                          key={r.id}
-                          onClick={() => openRestaurant(r)}
-                          className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-brand-pale"
-                        >
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-pale text-brand">
-                            <Store size={18} aria-hidden />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-semibold text-brand">{r.name}</span>
-                            <span className="block truncate text-xs text-neutral-400">
-                              {r.address}, {r.city}
-                            </span>
-                          </span>
-                        </button>
-                      ))}
-                      {restaurantMatches.length > MAX_SUGGESTIONS && (
-                        <button
-                          onClick={() => showRestaurants(search.trim())}
-                          className="w-full px-4 py-2 text-left text-sm font-semibold text-brand transition hover:bg-brand-pale"
-                        >
-                          Voir les {restaurantMatches.length} restaurants
-                        </button>
-                      )}
+                  {restaurantMatches.length > 0 && <SuggestionHeading>Restaurants</SuggestionHeading>}
+                  {restaurantMatches.slice(0, MAX_RESTAURANTS).map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => {
+                        setSearch('');
+                        setSearchOpen(false);
+                        navigate(`/restaurants/${r.id}`);
+                      }}
+                      className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-brand-pale"
+                    >
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-pale text-brand">
+                        <Store size={17} aria-hidden />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-brand">{r.name}</span>
+                        <span className="block truncate text-xs text-neutral-400">
+                          {r.address}, {r.city}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
 
-                      {current && dishMatches.length > 0 && (
-                        <SuggestionHeading>Plats chez {current.name}</SuggestionHeading>
-                      )}
-                      {current &&
-                        dishMatches.slice(0, MAX_SUGGESTIONS).map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() => pickDish(current, item)}
-                            className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-brand-pale"
-                          >
-                            <div
-                              className="h-10 w-10 shrink-0 rounded-lg bg-cover bg-center"
-                              style={{ backgroundImage: `url(${item.imageUrl || dishPhoto(item.name, item.category)})` }}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold text-brand">{item.name}</p>
-                              <p className="truncate text-xs text-neutral-400">{item.category}</p>
-                            </div>
-                            <span className="shrink-0 text-sm font-bold text-brand">
-                              {formatPrice(item.priceCents)}
-                            </span>
-                          </button>
-                        ))}
-                    </>
+                  {dishMatches.length > 0 && <SuggestionHeading>Plats</SuggestionHeading>}
+                  {dishMatches.slice(0, MAX_DISHES).map((dish) => (
+                    <button
+                      key={dish.name}
+                      onClick={() => goToResults(dish.name)}
+                      className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-brand-pale"
+                    >
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent/30 text-brand-dark">
+                        <UtensilsCrossed size={16} aria-hidden />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-brand">{dish.name}</span>
+                        <span className="block truncate text-xs text-neutral-400">
+                          {dish.offers.length === 1
+                            ? `Chez ${dish.offers[0].restaurant.name}`
+                            : `Dans ${dish.offers.length} restaurants`}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-bold text-brand">
+                        {dish.offers.length > 1 ? 'dès ' : ''}
+                        {formatPrice(dish.fromCents)}
+                      </span>
+                    </button>
+                  ))}
+
+                  {restaurantMatches.length === 0 && dishMatches.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-neutral-400">
+                      {query !== search.trim() || search.trim().length < 2
+                        ? 'Recherche…'
+                        : `Aucun résultat pour « ${search.trim()} »`}
+                    </p>
+                  ) : (
+                    <button
+                      onClick={() => goToResults(search.trim())}
+                      className="w-full border-t border-brand/10 px-4 py-2.5 text-left text-sm font-semibold text-brand transition hover:bg-brand-pale"
+                    >
+                      Voir tous les résultats pour « {search.trim()} »
+                    </button>
                   )}
                 </div>
               </>
@@ -178,6 +169,14 @@ export function StorefrontLayout() {
           </div>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-3">
+            <Link
+              to="/search"
+              aria-label="Rechercher"
+              className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10 md:hidden"
+            >
+              <Search size={20} />
+            </Link>
+
             {userId && <NotificationBell />}
 
             <button

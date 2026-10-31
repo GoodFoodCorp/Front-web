@@ -1,63 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CalendarDays, Repeat, TrendingUp } from 'lucide-react';
+import { ArrowRight, CalendarDays, TrendingUp } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
-import { useRestaurantMenu } from '../features/catalog/hooks/useMenu';
-import { useLocationStore } from '../store/locationStore';
-import { useCartStore } from '../store/cartStore';
-import type { MenuItem } from '../features/catalog/types/menu.types';
 import { RestaurantFinder } from '../features/restaurants/components/RestaurantFinder';
-import { distanceKm } from '../features/restaurants/finder';
 import { useReviewSummaries } from '../features/reviews';
-import { formatPrice } from '../utils/format';
-import { HERO_PHOTO, PROMO_GREEN_PHOTO, PROMO_YELLOW_PHOTO, categoryPhoto, dishPhoto } from '../utils/images';
+import { HERO_PHOTO, PROMO_GREEN_PHOTO, PROMO_YELLOW_PHOTO } from '../utils/images';
 
 const PROMO_CODE = 'BIENVENUE20';
 
 export function RestaurantsPage() {
   const navigate = useNavigate();
   const { data: restaurants, isLoading: restaurantsLoading } = useRestaurants();
-  const { restaurantId, place } = useLocationStore();
-  // The menu shown below: the restaurant last opened, else the closest, else the first.
-  const current = useMemo(() => {
-    const list = restaurants ?? [];
-    const visited = list.find((r) => r.id === restaurantId);
-    if (visited || !place) return visited ?? list[0];
-    const located = list.filter((r) => r.latitude != null && r.longitude != null);
-    const km = (r: (typeof list)[number]) => distanceKm(place, { lat: r.latitude!, lng: r.longitude! });
-    return located.sort((a, b) => km(a) - km(b))[0] ?? list[0];
-  }, [restaurants, restaurantId, place]);
-  const { data: menu, isLoading: menuLoading } = useRestaurantMenu(current?.id);
-  const add = useCartStore((s) => s.add);
   const [copied, setCopied] = useState(false);
-
-  const categories = useMemo(() => {
-    const byCategory = new Map<string, MenuItem[]>();
-    (menu ?? []).forEach((item) => {
-      const list = byCategory.get(item.category) ?? [];
-      list.push(item);
-      byCategory.set(item.category, list);
-    });
-    return Array.from(byCategory.entries());
-  }, [menu]);
-
-  // A taste of the menu: a dish from each category first, not a made-up ranking.
-  const featured = useMemo(() => {
-    const firsts = categories.map(([, items]) => items[0]);
-    const rest = (menu ?? []).filter((m) => !firsts.includes(m));
-    return [...firsts, ...rest].slice(0, 4);
-  }, [categories, menu]);
   const { data: marks } = useReviewSummaries((restaurants ?? []).map((r) => r.id));
 
   const toFinder = () => document.getElementById('restaurants')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-  const goToMenu = (category?: string) => {
-    if (!current) return;
-    navigate(`/restaurants/${current.id}${category ? `?category=${encodeURIComponent(category)}` : ''}`);
-  };
 
   const applyPromo = async () => {
     try {
@@ -150,67 +110,6 @@ export function RestaurantsPage() {
             />
           </div>
         </section>
-
-        {/* ── Categories ── */}
-        <section id="menu">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="font-display text-2xl font-bold text-brand sm:text-3xl">Nos Menus</h2>
-              <p className="mt-1 text-neutral-500">
-                La carte de <strong className="text-brand">{current?.name}</strong>, par catégorie
-              </p>
-            </div>
-            {restaurants.length > 1 && (
-              <Button variant="ghost" onClick={toFinder} className="shrink-0 px-4 py-2 text-sm">
-                <Repeat size={15} aria-hidden /> Changer de restaurant
-              </Button>
-            )}
-          </div>
-
-          {menuLoading ? (
-            <div className="mt-6">
-              <Spinner label="Chargement du menu…" />
-            </div>
-          ) : categories.length === 0 ? (
-            <div className="mt-6">
-              <EmptyState icon="🍽️" title="Menu vide" hint="Ce restaurant n'a pas encore d'articles." />
-            </div>
-          ) : (
-            <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              {categories.map(([category, items]) => (
-                <button
-                  key={category}
-                  onClick={() => goToMenu(category)}
-                  className="group overflow-hidden rounded-2xl border border-brand/10 bg-white text-left transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)]"
-                >
-                  <div
-                    className="h-28 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${categoryPhoto(category)})` }}
-                  />
-                  <div className="px-3 py-3 text-center">
-                    <p className="font-display font-bold text-brand">{category}</p>
-                    <p className="text-xs text-neutral-400">
-                      {items.length} plat{items.length > 1 ? 's' : ''}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ── A taste of the menu ── */}
-        {featured.length > 0 && current && (
-          <section>
-            <h2 className="font-display text-2xl font-bold text-brand sm:text-3xl">À la carte</h2>
-            <p className="mt-1 text-neutral-500">Un avant-goût de la carte de {current.name}</p>
-            <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {featured.map((item) => (
-                <PopularDishCard key={item.id} item={item} onAdd={() => current && add(item, current)} />
-              ))}
-            </div>
-          </section>
-        )}
       </div>
     </div>
   );
@@ -251,29 +150,5 @@ function OfferCard({
         style={{ backgroundImage: `url(${photo})` }}
       />
     </div>
-  );
-}
-
-function PopularDishCard({ item, onAdd }: { item: MenuItem; onAdd: () => void }) {
-  return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-brand/10 bg-white transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)]">
-      <div
-        className="h-40 bg-cover bg-center"
-        style={{ backgroundImage: `url(${item.imageUrl || dishPhoto(item.name, item.category)})` }}
-      />
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="font-display font-bold text-brand">{item.name}</h3>
-        <span className="mt-1 inline-block w-fit rounded-full border border-brand/15 px-2 py-0.5 text-xs text-brand">
-          {item.category}
-        </span>
-        <p className="mt-2 flex-1 text-sm text-neutral-500">{item.description}</p>
-        <div className="mt-4 flex items-center justify-between">
-          <span className="font-display text-lg font-extrabold text-brand">{formatPrice(item.priceCents)}</span>
-          <Button variant="accent" onClick={onAdd} className="px-4 py-2 text-xs">
-            Ajouter au panier
-          </Button>
-        </div>
-      </div>
-    </article>
   );
 }

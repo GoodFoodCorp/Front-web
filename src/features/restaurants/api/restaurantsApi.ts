@@ -35,6 +35,10 @@ export const restaurantsApi = {
         (near ? `&lat=${near.lat}&lng=${near.lng}` : ''),
     ),
 
+  /** Towns, postal codes and streets: where to look for the closest restaurants. */
+  suggestPlaces: (query: string) =>
+    http<AddressSuggestion[]>(`/api/restaurants/address-suggestions?q=${encodeURIComponent(query)}&limit=6&places=true`),
+
   /** Can the restaurant take an order for this address now ("" = pickup)? */
   quote: (id: string, address: string) =>
     http<DeliveryQuote>(`/api/restaurants/${id}/quote?address=${encodeURIComponent(address)}`),
