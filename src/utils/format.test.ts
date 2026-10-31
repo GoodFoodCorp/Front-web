@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCancellationRate, formatPrice, mergeDishes, plural } from './format';
+import { formatCancellationRate, formatPhone, formatPrice, mergeDishes, plural } from './format';
 
 describe('format', () => {
   it('writes amounts and counts the French way', () => {
@@ -18,5 +18,13 @@ describe('format', () => {
       { name: 'Burger', quantity: 5 },
       { name: 'Pizza', quantity: 4 },
     ]);
+  });
+});
+
+describe('formatPhone', () => {
+  it('groups a French number by two digits', () => {
+    expect(formatPhone('0140000000')).toBe('01 40 00 00 00');
+    expect(formatPhone('01.40.00.00.00')).toBe('01 40 00 00 00');
+    expect(formatPhone('+33 1 23 45 67 89')).toBe('+33 1 23 45 67 89');
   });
 });

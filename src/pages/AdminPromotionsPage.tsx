@@ -119,10 +119,13 @@ export function AdminPromotionsPage() {
                           variant="ghost"
                           disabled={p.redemptions_used > 0 || remove.isPending}
                           title={p.redemptions_used > 0 ? 'Un code déjà utilisé ne peut pas être supprimé' : undefined}
-                          onClick={() => remove.mutate(p.id)}
+                          onClick={() => {
+                            if (window.confirm(`Supprimer définitivement le code ${p.code} ?`)) remove.mutate(p.id);
+                          }}
+                          aria-label={`Supprimer le code ${p.code}`}
                           className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={14} aria-hidden />
                         </Button>
                       </div>
                     </td>

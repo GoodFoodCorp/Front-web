@@ -64,6 +64,7 @@ export function AdminFranchisesPage() {
         <Input
           className="max-w-xs"
           placeholder="Rechercher un franchisé..."
+          aria-label="Rechercher un franchisé"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

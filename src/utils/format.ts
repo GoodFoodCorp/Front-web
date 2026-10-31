@@ -44,3 +44,9 @@ export function mergeDishes<T extends { name: string; quantity: number }>(dishes
   }
   return [...byName.values()].sort((a, b) => b.quantity - a.quantity);
 }
+
+/** "01 40 00 00 00" for a French number typed without spaces; anything else as typed. */
+export function formatPhone(phone: string): string {
+  const digits = phone.replace(/[\s.-]/g, '');
+  return /^0\d{9}$/.test(digits) ? digits.replace(/(\d{2})(?=\d)/g, '$1 ') : phone;
+}

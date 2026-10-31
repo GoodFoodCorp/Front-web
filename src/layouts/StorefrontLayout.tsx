@@ -102,6 +102,7 @@ export function StorefrontLayout() {
                     if (e.key === 'Escape') setSearchOpen(false);
                   }}
                   placeholder="Rechercher..."
+                  aria-label="Rechercher un plat"
                   className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-neutral-400"
                 />
               </div>
@@ -160,9 +161,11 @@ export function StorefrontLayout() {
             <div className="relative">
               <button
                 onClick={() => setLocationOpen((v) => !v)}
+                aria-label={current ? `Restaurant : ${current.name} (changer)` : 'Choisir un restaurant'}
+                aria-expanded={locationOpen}
                 className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm text-white/90 transition hover:bg-white/10"
               >
-                <MapPin size={16} />
+                <MapPin size={16} aria-hidden />
                 <span className="hidden max-w-[160px] truncate sm:inline">
                   {current ? current.name : 'Choisir un restaurant'}
                 </span>
