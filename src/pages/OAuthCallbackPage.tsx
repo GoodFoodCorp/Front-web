@@ -5,6 +5,7 @@ import { Spinner } from '../components/Spinner';
 import { useHydrateSession } from '../features/auth/hooks/useAuth';
 import { authApi } from '../features/auth/api/authApi';
 import { decodeJwt } from '../store/authStore';
+import { homeFor } from '../features/auth/home';
 import logo from '../assets/logo.svg';
 
 /**
@@ -47,9 +48,7 @@ export function OAuthCallbackPage() {
       .then((session) => {
         hydrate(session);
         const roles = (decodeJwt(session.access_token).role_slugs as string[]) ?? [];
-        if (roles.includes('manager')) navigate('/portal', { replace: true });
-        else if (roles.includes('admin')) navigate('/admin', { replace: true });
-        else navigate('/', { replace: true });
+        navigate(homeFor(roles), { replace: true });
       })
       .catch(() => setError('session_refusee'));
   }, [hydrate, navigate]);

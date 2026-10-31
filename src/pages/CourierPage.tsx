@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Bike,
   CheckCircle2,
@@ -62,7 +61,6 @@ const euros = (amount: number) => formatPrice(Math.round(amount * 100));
  * code; follow earnings and payouts; keep the profile up to date.
  */
 export function CourierPage() {
-  const navigate = useNavigate();
   const logout = useLogout();
   const [tab, setTab] = useState<Tab>('runs');
   const { data: profile } = useCourierProfile();
@@ -94,10 +92,7 @@ export function CourierPage() {
             )}
             <NotificationBell />
             <button
-              onClick={() => {
-                logout();
-                navigate('/login');
-              }}
+              onClick={logout}
               aria-label="Déconnexion"
               className="grid h-10 w-10 place-items-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
             >

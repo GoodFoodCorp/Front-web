@@ -1,8 +1,10 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/authApi';
 import type { LoginResponse } from '../types/auth.types';
 import { sessionFromToken, useAuthStore } from '../../../store/authStore';
 import { useCartStore } from '../../../store/cartStore';
+import { useChatStore } from '../../../store/chatStore';
 
 type Credentials = { email: string; password: string };
 
@@ -49,16 +51,28 @@ export function useRegister() {
   });
 }
 
-/** Clears the session server- and client-side. */
+/**
+ * Clears the session server- and client-side, with everything the account
+ * left behind (cached pages, cart, assistant conversation), and opens the
+ * login page. The next account never sees the previous one's data, and the
+ * page being left is not remembered as a place to come back to.
+ */
 export function useLogout() {
   const logout = useAuthStore((s) => s.logout);
   const clearCart = useCartStore((s) => s.clear);
+  const resetChat = useChatStore((s) => s.reset);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   return () => {
     // The refresh cookie travels with the call: auth-service revokes it.
     void authApi.logout().catch(() => undefined);
+    // Leaving first: the guarded page is gone before the session is.
+    navigate('/login', { replace: true });
     logout();
     clearCart();
+    resetChat();
+    queryClient.clear();
   };
 }
 

@@ -17,9 +17,14 @@ export interface Session {
 }
 
 interface AuthState extends Session {
+  /** True right after the user signed out (in memory): the page they left
+   *  is not a page to bring the next account back to. */
+  signedOut: boolean;
   setSession: (s: Session) => void;
   setAccessToken: (token: string) => void;
   logout: () => void;
+  /** The session could not be renewed: the current page is worth reopening. */
+  expire: () => void;
   hasRole: (role: string) => boolean;
 }
 
@@ -57,9 +62,11 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       ...EMPTY,
-      setSession: (s) => set(s),
-      setAccessToken: (token) => set(sessionFromToken(token)),
-      logout: () => set(EMPTY),
+      signedOut: false,
+      setSession: (s) => set({ ...s, signedOut: false }),
+      setAccessToken: (token) => set({ ...sessionFromToken(token), signedOut: false }),
+      logout: () => set({ ...EMPTY, signedOut: true }),
+      expire: () => set({ ...EMPTY, signedOut: false }),
       hasRole: (role) => get().roles.includes(role),
     }),
     {

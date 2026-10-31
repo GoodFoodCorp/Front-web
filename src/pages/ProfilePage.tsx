@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   Camera,
@@ -71,7 +71,6 @@ const STATIC_ITEMS: { key: Tab | string; label: string; icon: typeof UserIcon; c
 const TAB_KEYS: Tab[] = ['profile', 'addresses', 'payments', 'favorites', 'settings'];
 
 export function ProfilePage() {
-  const navigate = useNavigate();
   const email = useAuthStore((s) => s.email);
   const roles = useAuthStore((s) => s.roles);
   const logout = useLogout();
@@ -148,10 +147,7 @@ export function ProfilePage() {
             })}
             <div className="!mt-3 border-t border-brand/10 pt-3">
               <button
-                onClick={() => {
-                  logout();
-                  navigate('/login');
-                }}
+                onClick={logout}
                 className="flex w-full items-center gap-2.5 rounded-xl px-4 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50"
               >
                 <LogOut size={17} /> Déconnexion
@@ -688,7 +684,6 @@ function FavoritesPanel() {
 }
 
 function SettingsPanel() {
-  const navigate = useNavigate();
   const { data: prefs, isLoading: prefsLoading } = useNotificationPreferences();
   const updatePrefs = useUpdateNotificationPreferences();
   const changePassword = useChangePassword();
@@ -706,17 +701,15 @@ function SettingsPanel() {
     changePassword.mutate(
       { currentPassword: passwordForm.current, newPassword: passwordForm.next },
       {
-        onSuccess: () => {
-          setPasswordSuccess(true);
-          navigate('/login');
-        },
+        // The hook signs out and opens the login page.
+        onSuccess: () => setPasswordSuccess(true),
       },
     );
   };
 
   const submitDelete = (e: React.FormEvent) => {
     e.preventDefault();
-    deleteAccount.mutate(deletePassword, { onSuccess: () => navigate('/login') });
+    deleteAccount.mutate(deletePassword);
   };
 
   return (

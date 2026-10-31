@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { ExternalLink, LogOut, Menu, X, type LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useLogout } from '../features/auth/hooks/useAuth';
@@ -18,7 +18,6 @@ export interface NavItem {
  * desktop, a drawer behind a menu button on a phone.
  */
 export function BackOfficeLayout({ subtitle, nav }: { subtitle: string; nav: NavItem[] }) {
-  const navigate = useNavigate();
   const logout = useLogout();
   const email = useAuthStore((s) => s.email);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -37,7 +36,7 @@ export function BackOfficeLayout({ subtitle, nav }: { subtitle: string; nav: Nav
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-[70] flex w-64 flex-col overflow-y-auto bg-brand text-white transition-transform duration-200 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-[70] flex h-screen w-64 flex-col overflow-y-auto bg-brand text-white transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -75,10 +74,7 @@ export function BackOfficeLayout({ subtitle, nav }: { subtitle: string; nav: Nav
 
         <div className="border-t border-white/10 px-3 py-4">
           <button
-            onClick={() => {
-              logout();
-              navigate('/login');
-            }}
+            onClick={logout}
             className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
           >
             <LogOut size={18} /> Déconnexion
@@ -103,6 +99,14 @@ export function BackOfficeLayout({ subtitle, nav }: { subtitle: string; nav: Nav
           </Link>
           <span className="ml-auto truncate text-sm text-neutral-500">{email}</span>
           <NotificationBell tone="dark" />
+          <button
+            onClick={logout}
+            title="Se déconnecter"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+          >
+            <LogOut size={16} aria-hidden /> <span className="hidden sm:inline">Déconnexion</span>
+            <span className="sr-only sm:hidden">Déconnexion</span>
+          </button>
         </header>
         <main className="min-w-0 flex-1 overflow-x-auto p-4 sm:p-6 lg:p-8">
           <Outlet />

@@ -73,7 +73,7 @@ export async function http<T>(path: string, options: RequestInit = {}): Promise<
       res = await send(path, options);
     }
     if (res.status === 401) {
-      useAuthStore.getState().logout();
+      useAuthStore.getState().expire();
     }
   }
 
