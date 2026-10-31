@@ -33,9 +33,9 @@ const ON_THE_WAY = ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'];
 function LiveTracking({ detail }: { detail: DeliveryDetail }) {
   const delivery: Delivery = detail.delivery;
   const live = useLiveDelivery(delivery._id, ON_THE_WAY.includes(delivery.status));
-  const courier = live ?? detail.lastPosition;
-  const pickedUp = live ? live.phase === 'TO_CUSTOMER' : delivery.status !== 'ASSIGNED';
-  const eta = formatEta(live?.etaAt ?? delivery.estimatedDeliveryTime);
+  const courier = live.position ?? detail.lastPosition;
+  const pickedUp = live.phase ? live.phase === 'TO_CUSTOMER' : delivery.status !== 'ASSIGNED';
+  const eta = formatEta(live.etaAt ?? delivery.estimatedDeliveryTime);
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -52,10 +52,13 @@ function LiveTracking({ detail }: { detail: DeliveryDetail }) {
         restaurant={delivery.pickup}
         customer={delivery.dropoff}
         courier={courier}
+        route={live.route}
         towards={pickedUp ? 'customer' : 'restaurant'}
       />
-      {live?.remainingKm !== undefined && (
-        <p className="text-xs text-neutral-400">Encore {live.remainingKm.toString().replace('.', ',')} km · position mise à jour en direct</p>
+      {live.remainingKm !== undefined && (
+        <p className="text-xs text-neutral-400">
+          Encore {live.remainingKm.toString().replace('.', ',')} km par la route · position mise à jour en direct
+        </p>
       )}
     </div>
   );
