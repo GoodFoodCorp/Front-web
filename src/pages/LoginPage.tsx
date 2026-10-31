@@ -6,6 +6,7 @@ import { Input } from '../components/Input';
 import { OAuthButtons } from '../features/auth/components/OAuthButtons';
 import { useLogin } from '../features/auth/hooks/useAuth';
 import { decodeJwt } from '../store/authStore';
+import { landingAfterLogin } from '../features/auth/home';
 import { useWelcomeStore } from '../store/welcomeStore';
 import logo from '../assets/logo.svg';
 
@@ -39,15 +40,7 @@ export function LoginPage() {
       {
         onSuccess: (data) => {
           const roles = (decodeJwt(data.access_token).role_slugs as string[]) ?? [];
-          const target =
-            from ??
-            (roles.includes('manager')
-              ? '/portal'
-              : roles.includes('admin')
-                ? '/admin'
-                : roles.includes('livreur')
-                  ? '/courier'
-                  : '/');
+          const target = landingAfterLogin(roles, from);
           // A welcome screen covers the page change, so nothing pops.
           playWelcome(() => navigate(target, { replace: true }));
         },

@@ -260,7 +260,6 @@ export function StorefrontLayout() {
                       onClick={() => {
                         setUserOpen(false);
                         logout();
-                        navigate('/login');
                       }}
                       className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50"
                     >
