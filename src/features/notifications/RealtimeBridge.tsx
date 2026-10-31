@@ -2,16 +2,7 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { closeRealtime, realtime } from '../../services/realtime';
 import { selectIsLoggedIn, useAuthStore } from '../../store/authStore';
-import { formatPrice } from '../../utils/format';
 import { useNotificationStore, type AppNotification } from './notificationStore';
-
-interface AvailableDeliveryEvent {
-  id: string;
-  pickup: { address: string };
-  distanceKm: number;
-  courierFeeCents: number;
-  tipCents: number;
-}
 
 /** A short chime: a new order or a new delivery must not go unnoticed. */
 function chime(): void {
@@ -52,6 +43,7 @@ export function RealtimeBridge() {
   const isManager = useAuthStore((s) => s.roles.includes('manager'));
   const claimFor = useNotificationStore((s) => s.claimFor);
   const push = useNotificationStore((s) => s.push);
+  const sync = useNotificationStore((s) => s.sync);
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -61,9 +53,15 @@ export function RealtimeBridge() {
       return;
     }
     const socket = realtime();
+    void sync();
     const refresh = () => {
       void qc.invalidateQueries({ queryKey: ['orders'] });
       void qc.invalidateQueries({ queryKey: ['deliveries'] });
+    };
+    // Back online: the notifications sent meanwhile, and fresh lists.
+    const catchUp = () => {
+      refresh();
+      void sync();
     };
     const notify = (n: AppNotification, loud: boolean) => {
       refresh();
@@ -71,32 +69,22 @@ export function RealtimeBridge() {
       systemNotification(n);
       if (loud) chime();
     };
-    const onNotification = (n: AppNotification) => notify(n, isManager && n.status === 'CONFIRMED');
-    const onAvailable = (d: AvailableDeliveryEvent) =>
-      notify(
-        {
-          id: `available:${d.id}`,
-          title: 'Nouvelle course disponible',
-          body: `${d.pickup.address} · ${d.distanceKm} km · ${formatPrice(d.courierFeeCents + d.tipCents)}`,
-          link: '/courier',
-          at: new Date().toISOString(),
-        },
-        true,
-      );
+    // Loud: a new order for the kitchen, a new delivery for a courier.
+    const onNotification = (n: AppNotification) =>
+      notify(n, (isManager && n.status === 'CONFIRMED') || (isCourier && n.status === 'AVAILABLE'));
     socket.on('notification', onNotification);
+    socket.on('delivery:available', refresh);
     socket.on('delivery:withdrawn', refresh);
     socket.on('delivery:cancelled', refresh);
-    if (isCourier) socket.on('delivery:available', onAvailable);
-    // Back online: catch up on what changed meanwhile.
-    socket.on('connect', refresh);
+    socket.on('connect', catchUp);
     return () => {
       socket.off('notification', onNotification);
+      socket.off('delivery:available', refresh);
       socket.off('delivery:withdrawn', refresh);
       socket.off('delivery:cancelled', refresh);
-      socket.off('delivery:available', onAvailable);
-      socket.off('connect', refresh);
+      socket.off('connect', catchUp);
     };
-  }, [isLoggedIn, userId, isCourier, isManager, claimFor, push, qc]);
+  }, [isLoggedIn, userId, isCourier, isManager, claimFor, push, sync, qc]);
 
   return null;
 }

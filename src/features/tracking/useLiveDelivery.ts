@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { http } from '../../services/http';
 import { ask, realtime } from '../../services/realtime';
+
+/** [lat, lng] points of a road route. */
+export type RoutePath = [number, number][];
 
 /** A point of the courier, with the arrival time recomputed from it. */
 export interface LivePosition {
@@ -11,21 +16,45 @@ export interface LivePosition {
   etaAt?: string;
   remainingKm?: number;
   phase?: 'TO_RESTAURANT' | 'TO_CUSTOMER';
+  /** Sent when the route was planned again (new phase, detour). */
+  route?: RoutePath;
+}
+
+interface RouteAnswer {
+  route: RoutePath | null;
+  etaAt?: string;
+  remainingKm?: number;
+  phase?: 'TO_RESTAURANT' | 'TO_CUSTOMER';
+}
+
+/** The road route left to ride, for a page opened during the delivery. */
+export function useDeliveryRoute(deliveryId: string | undefined, active: boolean) {
+  return useQuery({
+    queryKey: ['deliveries', 'route', deliveryId],
+    queryFn: () => http<RouteAnswer>(`/api/deliveries/${deliveryId}/route`),
+    enabled: !!deliveryId && active,
+    staleTime: 60_000,
+  });
 }
 
 /**
  * Follows a delivery live: joins its room on the realtime channel (the
- * server checks the viewer may watch it) and returns each new position.
+ * server checks the viewer may watch it) and returns each new position and
+ * the road route, replaced whenever the server plans it again.
  */
-export function useLiveDelivery(deliveryId: string | undefined, active: boolean): LivePosition | null {
+export function useLiveDelivery(deliveryId: string | undefined, active: boolean) {
   const [position, setPosition] = useState<LivePosition | null>(null);
+  const [liveRoute, setLiveRoute] = useState<RoutePath | null>(null);
+  const { data: initial } = useDeliveryRoute(deliveryId, active);
 
   useEffect(() => {
     if (!deliveryId || !active) return;
     const socket = realtime();
     const join = () => void ask('delivery:subscribe', { deliveryId }).catch(() => undefined);
     const onPosition = (p: LivePosition) => {
-      if (p.deliveryId === deliveryId) setPosition(p);
+      if (p.deliveryId !== deliveryId) return;
+      setPosition(p);
+      if (p.route) setLiveRoute(p.route);
     };
     join();
     socket.on('connect', join); // rooms are lost on reconnection
@@ -36,7 +65,13 @@ export function useLiveDelivery(deliveryId: string | undefined, active: boolean)
     };
   }, [deliveryId, active]);
 
-  return position;
+  return {
+    position,
+    route: liveRoute ?? initial?.route ?? null,
+    etaAt: position?.etaAt ?? initial?.etaAt,
+    phase: position?.phase ?? initial?.phase,
+    remainingKm: position?.remainingKm ?? initial?.remainingKm,
+  };
 }
 
 /** "12:42 · dans 8 min". */

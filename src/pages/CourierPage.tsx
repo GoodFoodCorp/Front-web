@@ -41,7 +41,7 @@ import {
 import type { AvailableDelivery, CourierProfileForm, Delivery, VehicleType } from '../features/delivery/types/delivery.types';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { LiveMap } from '../features/tracking/LiveMap';
-import { formatEta, navigationLinks, type LivePosition } from '../features/tracking/useLiveDelivery';
+import { formatEta, navigationLinks, useDeliveryRoute, type LivePosition } from '../features/tracking/useLiveDelivery';
 import { useShareLocation, type SharingState } from '../features/tracking/useShareLocation';
 import { formatDateTime, formatPrice } from '../utils/format';
 import logo from '../assets/logo.svg';
@@ -255,7 +255,9 @@ function ActiveDelivery({
   const toRestaurant = delivery.status === 'ASSIGNED';
   const target = toRestaurant ? delivery.pickup : delivery.dropoff;
   const links = navigationLinks(target);
-  const eta = formatEta(live?.etaAt ?? delivery.estimatedDeliveryTime);
+  const { data: planned } = useDeliveryRoute(delivery._id, true);
+  const route = live?.route ?? planned?.route ?? null;
+  const eta = formatEta(live?.etaAt ?? planned?.etaAt ?? delivery.estimatedDeliveryTime);
 
   return (
     <Card className="space-y-4">
@@ -273,8 +275,9 @@ function ActiveDelivery({
         restaurant={delivery.pickup}
         customer={delivery.dropoff}
         courier={courier}
+        route={route}
         towards={toRestaurant ? 'restaurant' : 'customer'}
-        className="h-56"
+        className="h-64"
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2">

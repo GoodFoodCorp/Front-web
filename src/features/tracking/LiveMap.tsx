@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import type { RoutePath } from './useLiveDelivery';
 
 export interface Point {
   lat: number;
@@ -26,21 +27,40 @@ const COURIER = pin('🛵', '#ffffff');
 
 const valid = (p?: Point | null): p is Point => !!p && Number.isFinite(p.lat) && Number.isFinite(p.lng) && (p.lat !== 0 || p.lng !== 0);
 
+/** The part of the route still ahead: from the point nearest the courier. */
+function ahead(route: RoutePath, courier: Point | null | undefined): RoutePath {
+  if (!valid(courier) || route.length < 2) return route;
+  let nearest = 0;
+  let best = Infinity;
+  route.forEach(([lat, lng], i) => {
+    const d = (lat - courier.lat) ** 2 + (lng - courier.lng) ** 2;
+    if (d < best) {
+      best = d;
+      nearest = i;
+    }
+  });
+  return [[courier.lat, courier.lng], ...route.slice(nearest)];
+}
+
 /**
  * The restaurant, the customer and, when known, the courier — moving as their
- * position comes in. The dashed line is the leg left to ride.
+ * position comes in — with the road route still to ride. Without a route
+ * (routing unavailable) a dashed straight line shows the direction.
  */
 export function LiveMap({
   restaurant,
   customer,
   courier,
+  route,
   towards = 'customer',
   className = 'h-64',
 }: {
   restaurant: Point;
   customer: Point;
   courier?: Point | null;
-  /** Where the courier is heading: the line goes there. */
+  /** Road route planned by delivery-service ([lat, lng] points). */
+  route?: RoutePath | null;
+  /** Where the courier is heading, for the straight-line fallback. */
   towards?: 'restaurant' | 'customer';
   className?: string;
 }) {
@@ -48,7 +68,7 @@ export function LiveMap({
   const mapRef = useRef<L.Map | null>(null);
   const courierRef = useRef<L.Marker | null>(null);
   const lineRef = useRef<L.Polyline | null>(null);
-
+  const fittedRef = useRef<string>('');
   const { lat: rLat, lng: rLng } = restaurant;
   const { lat: cLat, lng: cLng } = customer;
 
@@ -75,23 +95,43 @@ export function LiveMap({
       mapRef.current = null;
       courierRef.current = null;
       lineRef.current = null;
+      fittedRef.current = '';
     };
   }, [rLat, rLng, cLat, cLng]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !valid(courier)) return;
-    const at: L.LatLngExpression = [courier.lat, courier.lng];
-    if (courierRef.current) courierRef.current.setLatLng(at);
-    else courierRef.current = L.marker(at, { icon: COURIER, title: 'Livreur', zIndexOffset: 1000 }).addTo(map);
-    const target = towards === 'restaurant' ? { lat: rLat, lng: rLng } : { lat: cLat, lng: cLng };
-    if (valid(target)) {
-      const path: L.LatLngExpression[] = [at, [target.lat, target.lng]];
-      if (lineRef.current) lineRef.current.setLatLngs(path);
-      else lineRef.current = L.polyline(path, { color: '#004430', weight: 3, dashArray: '6 8' }).addTo(map);
-      map.fitBounds(L.latLngBounds(path), { padding: [50, 50], maxZoom: 17 });
+    if (!map) return;
+    if (valid(courier)) {
+      const at: L.LatLngExpression = [courier.lat, courier.lng];
+      if (courierRef.current) courierRef.current.setLatLng(at);
+      else courierRef.current = L.marker(at, { icon: COURIER, title: 'Livreur', zIndexOffset: 1000 }).addTo(map);
     }
-  }, [courier, towards, rLat, rLng, cLat, cLng]);
+
+    const target = towards === 'restaurant' ? { lat: rLat, lng: rLng } : { lat: cLat, lng: cLng };
+    const onRoads = !!route && route.length > 1;
+    const path: L.LatLngExpression[] | null = onRoads
+      ? ahead(route, courier)
+      : valid(courier) && valid(target)
+        ? [
+            [courier.lat, courier.lng],
+            [target.lat, target.lng],
+          ]
+        : null;
+    if (!path) return;
+    const style: L.PolylineOptions = onRoads
+      ? { color: '#004430', weight: 5, opacity: 0.85, lineJoin: 'round', dashArray: undefined }
+      : { color: '#004430', weight: 3, dashArray: '6 8' };
+    if (lineRef.current) lineRef.current.setLatLngs(path).setStyle(style);
+    else lineRef.current = L.polyline(path, style).addTo(map);
+
+    // Frame the whole route once per route, not on every point (the user may be zooming).
+    const key = onRoads ? `${route.length}:${route[0].join()}` : `line:${towards}`;
+    if (fittedRef.current !== key) {
+      fittedRef.current = key;
+      map.fitBounds(L.latLngBounds(path), { padding: [40, 40], maxZoom: 17 });
+    }
+  }, [courier, route, towards, rLat, rLng, cLat, cLng]);
 
   return <div ref={boxRef} className={`z-0 w-full overflow-hidden rounded-xl ${className}`} role="img" aria-label="Carte de la livraison" />;
 }

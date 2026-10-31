@@ -40,7 +40,13 @@ export function useShareLocation(deliveryIds: string[]) {
         for (const deliveryId of ids) {
           void ask<{ ok: boolean; position?: LivePosition }>('position:update', { deliveryId, ...point })
             .then((r) => {
-              if (r.ok && r.position) setLive((all) => ({ ...all, [deliveryId]: r.position! }));
+              if (!r.ok || !r.position) return;
+              const position = r.position;
+              setLive((all) => ({
+                ...all,
+                // A position without a route keeps the one already planned.
+                [deliveryId]: { ...position, route: position.route ?? all[deliveryId]?.route },
+              }));
             })
             .catch(() => undefined);
         }
