@@ -12,7 +12,7 @@ import { hoursOfDay } from '../features/restaurants/openingHours';
 import type { Restaurant } from '../features/restaurants/types/restaurant.types';
 import { RatingBadge, RestaurantReviews, useReviewSummaries } from '../features/reviews';
 import { AllergenList } from '../features/catalog/components/AllergenList';
-import { formatPrice } from '../utils/format';
+import { formatPhone, formatPrice } from '../utils/format';
 import { useCartStore } from '../store/cartStore';
 import { dishPhoto } from '../utils/images';
 
@@ -142,7 +142,7 @@ export function RestaurantMenuPage() {
           )}
           <p className="text-xs text-neutral-400">
             Prix TTC. Les allergènes de chaque plat sont indiqués sur sa fiche ; en cas de doute, contactez le
-            restaurant{restaurant?.phone ? ` au ${restaurant.phone}` : ''} avant de commander.
+            restaurant{restaurant?.phone ? ` au ${formatPhone(restaurant.phone)}` : ''} avant de commander.
           </p>
         </>
       )}

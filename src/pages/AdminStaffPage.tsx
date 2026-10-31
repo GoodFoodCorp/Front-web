@@ -56,7 +56,7 @@ export function AdminStaffPage() {
 
       <div className="relative max-w-md">
         <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-        <Input className="pl-9" placeholder="Rechercher par email" value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <Input className="pl-9" placeholder="Rechercher par email" aria-label="Rechercher un compte par email" value={typed} onChange={(e) => setTyped(e.target.value)} />
       </div>
 
       {isLoading ? (

@@ -99,6 +99,7 @@ export function AdminStockPage() {
           <Input
             className="max-w-[220px]"
             placeholder="Rechercher un article…"
+            aria-label="Rechercher un article"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

@@ -98,8 +98,11 @@ export function LoginPage() {
 
           <form onSubmit={submit} className="mt-8 space-y-4">
             <div className="enter" style={{ '--d': '340ms' } as React.CSSProperties}>
-              <label className="mb-1.5 block text-sm font-semibold text-neutral-700">Email</label>
+              <label htmlFor="login-email" className="mb-1.5 block text-sm font-semibold text-neutral-700">
+                Email
+              </label>
               <Input
+                id="login-email"
                 type="email"
                 required
                 autoComplete="email"
@@ -109,10 +112,11 @@ export function LoginPage() {
               />
             </div>
             <div className="enter" style={{ '--d': '420ms' } as React.CSSProperties}>
-              <label className="mb-1.5 block text-sm font-semibold text-neutral-700">
+              <label htmlFor="login-password" className="mb-1.5 block text-sm font-semibold text-neutral-700">
                 Mot de passe
               </label>
               <Input
+                id="login-password"
                 type="password"
                 required
                 autoComplete="current-password"

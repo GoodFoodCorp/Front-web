@@ -37,6 +37,7 @@ import { ContactPage } from '../pages/ContactPage';
 import { HelpCenterPage } from '../pages/HelpCenterPage';
 import { TermsPage } from '../pages/TermsPage';
 import { PrivacyPolicyPage } from '../pages/PrivacyPolicyPage';
+import { LegalNoticePage } from '../pages/LegalNoticePage';
 import { BecomeFranchiseePage } from '../pages/BecomeFranchiseePage';
 import { FranchiseLoginPage } from '../pages/FranchiseLoginPage';
 import { CourierPage } from '../pages/CourierPage';
@@ -97,6 +98,7 @@ export function AppRouter() {
         <Route path="help" element={<HelpCenterPage />} />
         <Route path="terms" element={<TermsPage />} />
         <Route path="privacy" element={<PrivacyPolicyPage />} />
+        <Route path="legal" element={<LegalNoticePage />} />
         <Route path="become-franchisee" element={<BecomeFranchiseePage />} />
         <Route path="franchise-login" element={<FranchiseLoginPage />} />
       </Route>

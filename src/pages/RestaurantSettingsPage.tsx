@@ -63,6 +63,7 @@ export function RestaurantSettingsPage() {
           </p>
         </div>
         <Switch
+          label="Prendre des commandes"
           checked={restaurant.acceptingOrders ?? true}
           onChange={(accepting: boolean) => intake.mutate({ id: restaurant.id, acceptingOrders: accepting })}
         />
@@ -81,9 +82,9 @@ export function RestaurantSettingsPage() {
                 onChange={(v) => setSlot(i, { day: Number(v) })}
                 options={DAY_ORDER.map((d) => ({ value: String(d), label: DAYS[d] }))}
               />
-              <input type="time" value={slot.opens} onChange={(e) => setSlot(i, { opens: e.target.value })} className={inputClass} />
+              <input type="time" aria-label={`Ouverture (${DAYS[slot.day]})`} value={slot.opens} onChange={(e) => setSlot(i, { opens: e.target.value })} className={inputClass} />
               <span className="text-sm text-neutral-400">à</span>
-              <input type="time" value={slot.closes} onChange={(e) => setSlot(i, { closes: e.target.value })} className={inputClass} />
+              <input type="time" aria-label={`Fermeture (${DAYS[slot.day]})`} value={slot.closes} onChange={(e) => setSlot(i, { closes: e.target.value })} className={inputClass} />
               <button
                 type="button"
                 onClick={() => setForm({ ...form, openingHours: form.openingHours.filter((_, j) => j !== i) })}

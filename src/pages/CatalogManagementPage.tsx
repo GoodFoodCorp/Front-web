@@ -149,6 +149,7 @@ function DishesTab({ isAdmin }: { isAdmin: boolean }) {
           <Input
             className="pl-9"
             placeholder="Rechercher un plat..."
+            aria-label="Rechercher un plat"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

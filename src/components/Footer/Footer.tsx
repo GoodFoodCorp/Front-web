@@ -14,8 +14,9 @@ const COLUMNS = [
     title: 'Support',
     links: [
       { label: "Centre d'aide", to: '/help' },
-      { label: "Conditions d'utilisation", to: '/terms' },
+      { label: 'Conditions générales', to: '/terms' },
       { label: 'Politique de confidentialité', to: '/privacy' },
+      { label: 'Mentions légales', to: '/legal' },
     ],
   },
   {
@@ -37,7 +38,7 @@ export function Footer() {
             <span className="font-display text-lg font-extrabold">Good Food</span>
           </div>
           <p className="mt-3 max-w-[220px] text-sm text-white/60">
-            Les repas de qualité, à coté de chez vous !
+            Les repas de qualité, à côté de chez vous !
           </p>
         </div>
         {COLUMNS.map((col) => (
@@ -55,6 +56,9 @@ export function Footer() {
           </div>
         ))}
       </div>
+      <p className="border-t border-white/10 px-4 py-4 text-center text-xs text-white/50">
+        © {new Date().getFullYear()} Good Food · Prix TTC · Paiement sécurisé par Stripe
+      </p>
     </footer>
   );
 }
