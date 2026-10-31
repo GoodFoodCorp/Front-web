@@ -4,7 +4,7 @@ import { ArrowLeft, Clock, Minus, MapPin, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { formatPrice } from '../utils/format';
-import { useCartStore } from '../store/cartStore';
+import { MAX_QUANTITY, useCartStore } from '../store/cartStore';
 import { selectIsLoggedIn, useAuthStore } from '../store/authStore';
 import { useCheckout } from '../features/orders/hooks/useOrders';
 import type { Fulfillment } from '../features/orders/types/order.types';
@@ -198,7 +198,7 @@ export function CartPage() {
                         <button
                           onClick={() => remove(line.item.id)}
                           className="shrink-0 text-red-500 transition hover:text-red-700"
-                          aria-label="Supprimer"
+                          aria-label={`Retirer ${line.item.name} du panier`}
                         >
                           <Trash2 size={17} />
                         </button>
@@ -209,7 +209,7 @@ export function CartPage() {
                           <button
                             onClick={() => decrement(line.item.id)}
                             className="grid h-7 w-7 place-items-center rounded-lg border border-brand/15 text-brand hover:bg-brand-pale"
-                            aria-label="Retirer un"
+                            aria-label={`Un ${line.item.name} de moins`}
                           >
                             <Minus size={14} />
                           </button>
@@ -220,8 +220,10 @@ export function CartPage() {
                               restaurantName &&
                               add(line.item, { id: restaurantId, name: restaurantName })
                             }
-                            className="grid h-7 w-7 place-items-center rounded-lg border border-brand/15 text-brand hover:bg-brand-pale"
-                            aria-label="Ajouter un"
+                            disabled={line.quantity >= MAX_QUANTITY}
+                            title={line.quantity >= MAX_QUANTITY ? `${MAX_QUANTITY} au maximum par commande` : undefined}
+                            className="grid h-7 w-7 place-items-center rounded-lg border border-brand/15 text-brand hover:bg-brand-pale disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label={`Un ${line.item.name} de plus`}
                           >
                             <Plus size={14} />
                           </button>

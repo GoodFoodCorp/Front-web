@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CalendarDays, Star, TrendingUp } from 'lucide-react';
+import { ArrowRight, Bike, CalendarDays, MapPin, TrendingUp } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Spinner } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
@@ -9,6 +9,9 @@ import { useRestaurantMenu } from '../features/catalog/hooks/useMenu';
 import { useLocationStore } from '../store/locationStore';
 import { useCartStore } from '../store/cartStore';
 import type { MenuItem } from '../features/catalog/types/menu.types';
+import type { Restaurant } from '../features/restaurants/types/restaurant.types';
+import { RatingBadge, useReviewSummaries } from '../features/reviews';
+import type { ReviewSummary } from '../features/reviews/reviewsApi';
 import { formatPrice } from '../utils/format';
 import { HERO_PHOTO, PROMO_GREEN_PHOTO, PROMO_YELLOW_PHOTO, categoryPhoto, dishPhoto } from '../utils/images';
 
@@ -33,9 +36,13 @@ export function RestaurantsPage() {
     return Array.from(byCategory.entries());
   }, [menu]);
 
-  const popular = useMemo(() => {
-    return [...(menu ?? [])].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 4);
-  }, [menu]);
+  // A taste of the menu: a dish from each category first, not a made-up ranking.
+  const featured = useMemo(() => {
+    const firsts = categories.map(([, items]) => items[0]);
+    const rest = (menu ?? []).filter((m) => !firsts.includes(m));
+    return [...firsts, ...rest].slice(0, 4);
+  }, [categories, menu]);
+  const { data: marks } = useReviewSummaries((restaurants ?? []).map((r) => r.id));
 
   const goToMenu = (category?: string) => {
     if (!current) return;
@@ -73,7 +80,7 @@ export function RestaurantsPage() {
           <h1 className="font-display text-4xl font-extrabold leading-tight sm:text-5xl">
             Bienvenue chez Good Food !
           </h1>
-          <p className="mt-3 max-w-md text-white/80">Les repas de qualité, à coté de chez vous !</p>
+          <p className="mt-3 max-w-md text-white/80">Les repas de qualité, à côté de chez vous !</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button variant="accent" className="px-6 py-3" onClick={() => goToMenu()}>
               Commander maintenant
@@ -96,10 +103,11 @@ export function RestaurantsPage() {
           <div className="flex items-center gap-3">
             <TrendingUp size={20} className="text-brand-dark" />
             <div className="text-sm text-brand-dark">
-              <p className="font-semibold">Offre à durée limitée</p>
+              <p className="font-semibold">Offre de bienvenue</p>
               <p className="font-bold">
-                Obtenez 20% de réduction sur votre première commande ! Code : {PROMO_CODE}
+                −20 % sur votre première commande avec le code {PROMO_CODE}
               </p>
+              <p className="text-xs">Valable une fois par client, sur le montant des plats.</p>
             </div>
           </div>
           <Button onClick={applyPromo} className="shrink-0 px-4 py-2">
@@ -109,6 +117,24 @@ export function RestaurantsPage() {
       </section>
 
       <div className="mx-auto max-w-6xl space-y-14 px-4 py-10">
+        {/* ── Restaurants ── */}
+        <section aria-labelledby="restaurants-title">
+          <h2 id="restaurants-title" className="font-display text-2xl font-bold text-brand sm:text-3xl">
+            Nos restaurants
+          </h2>
+          <p className="mt-1 text-neutral-500">Choisissez le restaurant le plus proche de chez vous</p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {restaurants.map((r) => (
+              <RestaurantCard
+                key={r.id}
+                restaurant={r}
+                summary={marks?.get(r.id)}
+                onOpen={() => navigate(`/restaurants/${r.id}`)}
+              />
+            ))}
+          </div>
+        </section>
+
         {/* ── Offers ── */}
         <section>
           <h2 className="font-display text-2xl font-bold text-brand sm:text-3xl">Découvrez nos dernières offres</h2>
@@ -159,7 +185,7 @@ export function RestaurantsPage() {
                   <div className="px-3 py-3 text-center">
                     <p className="font-display font-bold text-brand">{category}</p>
                     <p className="text-xs text-neutral-400">
-                      {items.length} menu{items.length > 1 ? 's' : ''}
+                      {items.length} plat{items.length > 1 ? 's' : ''}
                     </p>
                   </div>
                 </button>
@@ -168,13 +194,13 @@ export function RestaurantsPage() {
           )}
         </section>
 
-        {/* ── Popular dishes ── */}
-        {popular.length > 0 && (
+        {/* ── A taste of the menu ── */}
+        {featured.length > 0 && current && (
           <section>
-            <h2 className="font-display text-2xl font-bold text-brand sm:text-3xl">Plats Populaires</h2>
-            <p className="mt-1 text-neutral-500">Nos plats les plus appréciés par nos clients</p>
+            <h2 className="font-display text-2xl font-bold text-brand sm:text-3xl">À la carte</h2>
+            <p className="mt-1 text-neutral-500">Un avant-goût de la carte de {current.name}</p>
             <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {popular.map((item) => (
+              {featured.map((item) => (
                 <PopularDishCard key={item.id} item={item} onAdd={() => current && add(item, current)} />
               ))}
             </div>
@@ -182,6 +208,46 @@ export function RestaurantsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function RestaurantCard({
+  restaurant,
+  summary,
+  onOpen,
+}: {
+  restaurant: Restaurant;
+  summary: ReviewSummary | undefined;
+  onOpen: () => void;
+}) {
+  const open = restaurant.isOpenNow !== false && restaurant.acceptingOrders !== false;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex flex-col gap-2 rounded-2xl border border-brand/10 bg-white p-5 text-left transition hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-display text-lg font-bold text-brand">{restaurant.name}</h3>
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+            open ? 'bg-brand-pale text-brand' : 'bg-neutral-100 text-neutral-500'
+          }`}
+        >
+          {open ? 'Ouvert' : 'Fermé'}
+        </span>
+      </div>
+      <p className="flex items-center gap-1.5 text-sm text-neutral-500">
+        <MapPin size={14} aria-hidden /> {restaurant.address}, {restaurant.city}
+      </p>
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
+        <RatingBadge summary={summary} />
+        <span className="flex items-center gap-1 text-xs text-neutral-500">
+          <Bike size={14} aria-hidden />
+          {restaurant.deliveryFeeCents ? formatPrice(restaurant.deliveryFeeCents) : 'Livraison offerte'}
+        </span>
+      </div>
+    </button>
   );
 }
 
@@ -231,12 +297,7 @@ function PopularDishCard({ item, onAdd }: { item: MenuItem; onAdd: () => void })
         style={{ backgroundImage: `url(${item.imageUrl || dishPhoto(item.name, item.category)})` }}
       />
       <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display font-bold text-brand">{item.name}</h3>
-          <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-neutral-500">
-            <Star size={13} className="fill-accent text-accent" /> {item.rating || '—'}
-          </span>
-        </div>
+        <h3 className="font-display font-bold text-brand">{item.name}</h3>
         <span className="mt-1 inline-block w-fit rounded-full border border-brand/15 px-2 py-0.5 text-xs text-brand">
           {item.category}
         </span>

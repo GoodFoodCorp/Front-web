@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Mail, MapPin, Phone, Plus, Star, Users } from 'lucide-react';
+import { MapPin, Phone, Plus } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
@@ -10,7 +10,9 @@ import { Spinner } from '../components/Spinner';
 import { useAllRestaurants, useCreateRestaurant, useUpdateRestaurant } from '../features/restaurants/hooks/useRestaurants';
 import type { Restaurant } from '../features/restaurants/types/restaurant.types';
 import { useNetworkAnalytics, useRestaurantAnalytics } from '../features/analytics/hooks/useAnalytics';
-import { demoMetricsFor } from '../utils/demoMetrics';
+import { RatingBadge, useReviewSummaries } from '../features/reviews';
+import type { ReviewSummary } from '../features/reviews/reviewsApi';
+import { hoursOfDay } from '../features/restaurants/openingHours';
 import { formatPrice } from '../utils/format';
 import { restaurantPhoto } from '../utils/images';
 import { AddressAutocomplete } from '../features/restaurants/components/AddressAutocomplete';
@@ -23,6 +25,7 @@ const STATUS_FILTERS = ['Tous les statuts', 'Actif', 'Inactif'] as const;
 export function AdminFranchisesPage() {
   const { data: restaurants, isLoading } = useAllRestaurants();
   const { data: network } = useNetworkAnalytics(ANALYTICS_DAYS);
+  const { data: marks } = useReviewSummaries((restaurants ?? []).map((r) => r.id));
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<(typeof STATUS_FILTERS)[number]>('Tous les statuts');
   const [creating, setCreating] = useState(false);
@@ -98,7 +101,13 @@ export function AdminFranchisesPage() {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((r, i) => (
-            <FranchiseCard key={r.id} restaurant={r} index={i} onEdit={() => setEditing(r)} />
+            <FranchiseCard
+              key={r.id}
+              restaurant={r}
+              index={i}
+              summary={marks?.get(r.id)}
+              onEdit={() => setEditing(r)}
+            />
           ))}
         </div>
       )}
@@ -115,9 +124,19 @@ function StatCard({ label, value, tone = 'text-brand' }: { label: string; value:
   );
 }
 
-function FranchiseCard({ restaurant, index, onEdit }: { restaurant: Restaurant; index: number; onEdit: () => void }) {
+function FranchiseCard({
+  restaurant,
+  index,
+  summary,
+  onEdit,
+}: {
+  restaurant: Restaurant;
+  index: number;
+  summary: ReviewSummary | undefined;
+  onEdit: () => void;
+}) {
   const [showDetails, setShowDetails] = useState(false);
-  const metrics = demoMetricsFor(restaurant.id);
+  const today = hoursOfDay(restaurant.openingHours, new Date().getDay());
   const { data: kpi } = useRestaurantAnalytics(ANALYTICS_DAYS, restaurant.id);
 
   return (
@@ -130,12 +149,7 @@ function FranchiseCard({ restaurant, index, onEdit }: { restaurant: Restaurant; 
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-display font-bold text-brand">{restaurant.name}</h3>
-          <span
-            title="Note estimée (aucun service d'avis pour le moment)"
-            className="flex shrink-0 items-center gap-1 text-xs font-semibold text-neutral-500"
-          >
-            <Star size={13} className="fill-accent text-accent" /> {metrics.rating}
-          </span>
+          <RatingBadge summary={summary} className="shrink-0" />
         </div>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500">
           <MapPin size={13} className="shrink-0" /> {restaurant.address}, {restaurant.city}
@@ -151,9 +165,9 @@ function FranchiseCard({ restaurant, index, onEdit }: { restaurant: Restaurant; 
             <p className="font-display font-bold text-brand">{kpi ? kpi.ordersCount : '—'}</p>
           </div>
           <div>
-            <p className="text-xs text-neutral-400">Personnel (estimé)</p>
-            <p className="flex items-center gap-1 font-display font-bold text-brand">
-              <Users size={13} /> {metrics.staffCount}
+            <p className="text-xs text-neutral-400">Commandes</p>
+            <p className="font-display font-bold text-brand">
+              {restaurant.acceptingOrders === false ? 'En pause' : restaurant.isOpenNow ? 'Ouvert' : 'Fermé'}
             </p>
           </div>
           <div>
@@ -165,12 +179,15 @@ function FranchiseCard({ restaurant, index, onEdit }: { restaurant: Restaurant; 
         {showDetails && (
           <div className="mt-3 space-y-1 rounded-xl bg-neutral-50 p-3 text-xs text-neutral-500">
             <p>
-              <Phone size={11} className="mr-1 inline" /> Contact non renseigné
+              <Phone size={11} className="mr-1 inline" /> {restaurant.phone || 'Téléphone non renseigné'}
             </p>
+            <p>Aujourd’hui : {today || 'fermé'}</p>
             <p>
-              <Mail size={11} className="mr-1 inline" /> Contact non renseigné
+              Livraison {restaurant.deliveryFeeCents ? formatPrice(restaurant.deliveryFeeCents) : 'offerte'} · rayon{' '}
+              {restaurant.deliveryRadiusKm ?? '—'} km · minimum{' '}
+              {restaurant.minimumOrderCents ? formatPrice(restaurant.minimumOrderCents) : 'aucun'}
             </p>
-            <p>Ouverture (estimée) : {new Date(metrics.openedAt).toLocaleDateString('fr-FR')}</p>
+            <p>Préparation ~{restaurant.prepTimeMinutes ?? '—'} min</p>
           </div>
         )}
 

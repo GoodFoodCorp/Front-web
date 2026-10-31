@@ -28,6 +28,7 @@ export default defineConfig({
       '/api/user/': services.auth,   // auth profile (/api/user/me)
       '/api/admin': services.auth,
       '/api/orders': services.orders,
+      '/api/reviews': services.orders,
       '/api/menu': services.menu,
       '/api/payments': services.payment,
       '/api/restaurants': services.franchise,

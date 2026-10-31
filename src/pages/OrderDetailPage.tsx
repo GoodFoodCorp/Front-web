@@ -23,6 +23,7 @@ import { stripeEnabled } from '../services/stripe';
 import { API_BASE_URL } from '../config/app.config';
 import type { Delivery, DeliveryDetail } from '../features/delivery/types/delivery.types';
 import type { Order } from '../features/orders/types/order.types';
+import { ReviewOrderCard } from '../features/reviews';
 
 /** A delivery exists once the kitchen has the order. */
 const WITH_DELIVERY: OrderStatus[] = ['IN_PREPARATION', 'READY_FOR_PICKUP', 'IN_DELIVERY', 'DELIVERED'];
@@ -289,6 +290,10 @@ export function OrderDetailPage() {
             )
           )}
         </Card>
+      )}
+
+      {order.status === 'DELIVERED' && (
+        <ReviewOrderCard orderId={order.id} restaurantName={restaurant?.name ?? 'le restaurant'} />
       )}
 
       <Card className="space-y-3">

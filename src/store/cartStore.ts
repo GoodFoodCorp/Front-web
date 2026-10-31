@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { MenuItem } from '../features/catalog/types/menu.types';
 
+/** Same cap as order-service: more of one dish goes through the restaurant. */
+export const MAX_QUANTITY = 50;
+
 export interface CartLine {
   item: MenuItem;
   quantity: number;
@@ -38,6 +41,7 @@ export const useCartStore = create<CartState>()(
             };
           }
           const existing = state.lines.find((l) => l.item.id === item.id);
+          if (existing && existing.quantity >= MAX_QUANTITY) return state;
           const lines = existing
             ? state.lines.map((l) => (l.item.id === item.id ? { ...l, quantity: l.quantity + 1 } : l))
             : [...state.lines, { item, quantity: 1 }];

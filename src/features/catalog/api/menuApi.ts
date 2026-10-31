@@ -24,6 +24,7 @@ function toMenuItem(d: MenuItemDto): MenuItem {
     rating: d.rating,
     available: d.available,
     ingredients: d.ingredients ?? [],
+    allergens: d.allergens ?? [],
     isGlobal: d.is_global,
     hiddenForViewer: d.hidden_for_viewer,
     imageUrl: d.image_data_url ?? '',
