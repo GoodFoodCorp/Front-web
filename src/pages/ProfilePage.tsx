@@ -729,31 +729,19 @@ function SettingsPanel() {
           <Spinner />
         ) : (
           <div className="mt-4 divide-y divide-brand/10">
-            <ToggleRow
-              label="Emails sur mes commandes"
-              hint="Confirmation, statut, livraison"
-              checked={prefs?.email_orders ?? true}
-              disabled={updatePrefs.isPending}
-              onChange={(checked) =>
-                prefs && updatePrefs.mutate({ ...prefs, email_orders: checked })
-              }
-            />
+            <div className="py-3">
+              <p className="text-sm font-semibold text-neutral-700">Emails sur mes commandes</p>
+              <p className="text-xs text-neutral-400">
+                Toujours envoyés : la facture de chaque commande payée. Le suivi en direct s’affiche dans l’application.
+              </p>
+            </div>
             <ToggleRow
               label="Emails promotionnels"
-              hint="Offres et nouveautés Good Food"
-              checked={prefs?.email_promos ?? true}
+              hint="Offres et nouveautés Good Food, uniquement si vous l’activez. Désinscription à tout moment."
+              checked={prefs?.email_promos ?? false}
               disabled={updatePrefs.isPending}
               onChange={(checked) =>
                 prefs && updatePrefs.mutate({ ...prefs, email_promos: checked })
-              }
-            />
-            <ToggleRow
-              label="SMS sur mes commandes"
-              hint="Alertes de livraison par SMS"
-              checked={prefs?.sms_orders ?? false}
-              disabled={updatePrefs.isPending}
-              onChange={(checked) =>
-                prefs && updatePrefs.mutate({ ...prefs, sms_orders: checked })
               }
             />
           </div>

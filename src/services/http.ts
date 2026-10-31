@@ -1,5 +1,6 @@
 import { useAuthStore } from '../store/authStore';
 import { API_BASE_URL } from '../config/app.config';
+import { frenchError } from './errorMessages';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -99,13 +100,12 @@ function parseBody(text: string): unknown {
 }
 
 /** The services answer {error} (Go, Node), {detail} (FastAPI) or a
- *  ProblemDetails {title, errors} (.NET); a gateway may answer HTML. */
+ *  ProblemDetails {title, errors} (.NET); a gateway may answer HTML. The
+ *  message shown is always French (see errorMessages). */
 function errorMessage(status: number, body: unknown): string {
   const b = (body ?? {}) as { error?: unknown; detail?: unknown; title?: unknown; message?: unknown };
   for (const candidate of [b.error, b.detail, b.message, b.title]) {
-    if (typeof candidate === 'string' && candidate.trim()) return candidate;
+    if (typeof candidate === 'string' && candidate.trim()) return frenchError(candidate, status);
   }
-  if (status === 429) return 'Trop de tentatives. Réessayez dans une minute.';
-  if (status >= 500) return 'Le service est momentanément indisponible. Réessayez dans un instant.';
-  return `Erreur ${status}`;
+  return frenchError('', status);
 }
