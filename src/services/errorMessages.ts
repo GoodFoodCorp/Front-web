@@ -10,6 +10,11 @@ const TRANSLATIONS: [RegExp, string | ((m: RegExpMatchArray) => string)][] = [
   [/insufficient role|requires role/i, "Votre compte n'a pas accès à cette action."],
   [/your account is not linked to a restaurant/i, "Votre compte n'est rattaché à aucun restaurant. Contactez le siège."],
   [/only head office can manage categories/i, 'Seul le siège peut gérer les catégories de la carte.'],
+  // Opening hours
+  [/two opening periods of the same day overlap/i, 'Deux plages horaires du même jour se chevauchent : corrigez-les avant d’enregistrer.'],
+  [/an opening period cannot start and end at the same time/i, 'Une plage horaire ne peut pas commencer et finir à la même heure.'],
+  [/at most \d+ opening periods per week/i, 'Trop de plages horaires dans la semaine.'],
+  [/opening hours must use the hh:mm format/i, 'Heures invalides : utilisez le format 11:30.'],
   [/only head office can manage promo codes/i, 'Seul le siège peut gérer les codes promo.'],
   [/only a restaurant manager (or head office )?can manage (the catalog|recipes)/i, 'Seul le gérant du restaurant peut modifier la carte.'],
   [/only a restaurant manager can do this/i, 'Action réservée au gérant du restaurant.'],

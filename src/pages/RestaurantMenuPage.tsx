@@ -9,7 +9,7 @@ import { Spinner } from '../components/Spinner';
 import { useRestaurantMenu, useRestaurantMenuPlans } from '../features/catalog/hooks/useMenu';
 import type { MenuItem, MenuPlan } from '../features/catalog/types/menu.types';
 import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
-import { hoursOfDay } from '../features/restaurants/openingHours';
+import { DAY_NAMES, DAY_ORDER, hoursOfDay, openingLabel } from '../features/restaurants/openingHours';
 import type { Restaurant } from '../features/restaurants/types/restaurant.types';
 import { RatingBadge, RestaurantReviews, useReviewSummaries } from '../features/reviews';
 import { AllergenList } from '../features/catalog/components/AllergenList';
@@ -75,7 +75,8 @@ export function RestaurantMenuPage() {
   const items = (category === ALL ? catalog : catalog.filter((m) => m.category === category)).filter(
     (m) => !query || fold(`${m.name} ${m.description} ${m.category}`).includes(query),
   );
-  const closed = !!restaurant && (restaurant.isOpenNow === false || restaurant.acceptingOrders === false);
+  const opening = restaurant ? openingLabel(restaurant) : null;
+  const closed = !!opening && !opening.open;
   const cartHere = cart.restaurantId === restaurantId && cart.lines.length > 0;
   const cartElsewhere = !!cart.restaurantId && cart.restaurantId !== restaurantId && cart.lines.length > 0;
 
@@ -115,11 +116,9 @@ export function RestaurantMenuPage() {
         </div>
       </header>
 
-      {closed && (
+      {closed && restaurant && (
         <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {restaurant?.acceptingOrders === false
-            ? 'Ce restaurant ne prend pas de commandes pour le moment. Revenez un peu plus tard.'
-            : 'Ce restaurant est fermé pour le moment. Vous pouvez consulter la carte et commander pendant ses horaires d’ouverture.'}
+          {closedNotice(restaurant)}
         </p>
       )}
 
@@ -224,28 +223,59 @@ export function RestaurantMenuPage() {
   );
 }
 
+/** Why ordering is not possible now, and when it will be. */
+function closedNotice(restaurant: Restaurant): string {
+  const { detail } = openingLabel(restaurant);
+  switch (restaurant.openState) {
+    case 'CLOSED_BY_RESTAURANT':
+      return 'Ce restaurant est fermé temporairement et ne prend pas de commandes pour le moment. Revenez un peu plus tard.';
+    case 'OUTSIDE_HOURS':
+      return `Ce restaurant est fermé pour le moment${detail ? ` : il ${detail}` : ''}. Vous pouvez consulter la carte en attendant.`;
+    case 'NO_HOURS':
+      return 'Ce restaurant n’a pas encore communiqué ses horaires : il ne prend pas de commandes pour le moment.';
+    default:
+      return 'Ce restaurant ne prend pas de commandes pour le moment.';
+  }
+}
+
 function RestaurantFacts({ restaurant }: { restaurant: Restaurant }) {
-  const today = hoursOfDay(restaurant.openingHours, new Date().getDay());
+  const opening = openingLabel(restaurant);
+  const today = new Date().getDay();
   return (
-    <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/85">
-      <li className="flex items-center gap-1.5">
-        <Clock size={15} aria-hidden />
-        <span className={restaurant.isOpenNow ? 'font-semibold text-accent' : 'font-semibold text-white/60'}>
-          {restaurant.isOpenNow ? 'Ouvert' : 'Fermé'}
-        </span>
-        {today ? `· aujourd’hui ${today}` : '· fermé aujourd’hui'}
-      </li>
-      {!!restaurant.prepTimeMinutes && (
+    <>
+      <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/85">
         <li className="flex items-center gap-1.5">
-          <ShoppingBag size={15} aria-hidden /> Prêt en ~{restaurant.prepTimeMinutes} min
+          <Clock size={15} aria-hidden />
+          <span className={opening.open ? 'font-semibold text-accent' : 'font-semibold text-white/60'}>{opening.badge}</span>
+          {opening.detail && `· ${opening.detail}`}
         </li>
+        {!!restaurant.prepTimeMinutes && (
+          <li className="flex items-center gap-1.5">
+            <ShoppingBag size={15} aria-hidden /> Prêt en ~{restaurant.prepTimeMinutes} min
+          </li>
+        )}
+        <li className="flex items-center gap-1.5">
+          <Bike size={15} aria-hidden />
+          Livraison {restaurant.deliveryFeeCents ? formatPrice(restaurant.deliveryFeeCents) : 'offerte'}
+          {!!restaurant.minimumOrderCents && ` · minimum ${formatPrice(restaurant.minimumOrderCents)}`}
+        </li>
+      </ul>
+      {(restaurant.openingHours?.length ?? 0) > 0 && (
+        <details className="mt-3 text-sm text-white/85">
+          <summary className="w-fit cursor-pointer underline decoration-white/40 underline-offset-2 hover:decoration-white">
+            Horaires de la semaine
+          </summary>
+          <ul className="mt-2 w-fit min-w-64 space-y-0.5 rounded-xl bg-white/10 px-3 py-2 text-white/90">
+            {DAY_ORDER.map((d) => (
+              <li key={d} className={`flex justify-between gap-6 ${d === today ? 'font-semibold text-white' : ''}`}>
+                <span>{DAY_NAMES[d]}</span>
+                <span>{hoursOfDay(restaurant.openingHours, d) || 'Fermé'}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
-      <li className="flex items-center gap-1.5">
-        <Bike size={15} aria-hidden />
-        Livraison {restaurant.deliveryFeeCents ? formatPrice(restaurant.deliveryFeeCents) : 'offerte'}
-        {!!restaurant.minimumOrderCents && ` · minimum ${formatPrice(restaurant.minimumOrderCents)}`}
-      </li>
-    </ul>
+    </>
   );
 }
 

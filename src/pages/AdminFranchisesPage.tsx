@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MapPin, Phone, Plus } from 'lucide-react';
+import { MapPin, Phone, Plus, Power } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
@@ -7,12 +7,17 @@ import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
-import { useAllRestaurants, useCreateRestaurant, useUpdateRestaurant } from '../features/restaurants/hooks/useRestaurants';
+import {
+  useAllRestaurants,
+  useCreateRestaurant,
+  useSetOrderIntake,
+  useUpdateRestaurant,
+} from '../features/restaurants/hooks/useRestaurants';
 import type { Restaurant } from '../features/restaurants/types/restaurant.types';
 import { useNetworkAnalytics, useRestaurantAnalytics } from '../features/analytics/hooks/useAnalytics';
 import { RatingBadge, useReviewSummaries } from '../features/reviews';
 import type { ReviewSummary } from '../features/reviews/reviewsApi';
-import { hoursOfDay } from '../features/restaurants/openingHours';
+import { hoursOfDay, openingLabel } from '../features/restaurants/openingHours';
 import { formatPrice } from '../utils/format';
 import { restaurantPhoto } from '../utils/images';
 import { AddressAutocomplete } from '../features/restaurants/components/AddressAutocomplete';
@@ -139,6 +144,9 @@ function FranchiseCard({
   const [showDetails, setShowDetails] = useState(false);
   const today = hoursOfDay(restaurant.openingHours, new Date().getDay());
   const { data: kpi } = useRestaurantAnalytics(ANALYTICS_DAYS, restaurant.id);
+  const intake = useSetOrderIntake();
+  const opening = openingLabel(restaurant);
+  const closedByRestaurant = restaurant.acceptingOrders === false;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-brand/10 bg-white">
@@ -166,10 +174,9 @@ function FranchiseCard({
             <p className="font-display font-bold text-brand">{kpi ? kpi.ordersCount : '—'}</p>
           </div>
           <div>
-            <p className="text-xs text-neutral-400">Commandes</p>
-            <p className="font-display font-bold text-brand">
-              {restaurant.acceptingOrders === false ? 'En pause' : restaurant.isOpenNow ? 'Ouvert' : 'Fermé'}
-            </p>
+            <p className="text-xs text-neutral-400">En ce moment</p>
+            <p className={`font-display font-bold ${opening.open ? 'text-brand' : 'text-amber-700'}`}>{opening.badge}</p>
+            {opening.detail && <p className="text-xs text-neutral-500">{opening.detail}</p>}
           </div>
           <div>
             <p className="text-xs text-neutral-400">Plan</p>
@@ -192,7 +199,19 @@ function FranchiseCard({
           </div>
         )}
 
-        <div className="mt-4 flex gap-2">
+        {restaurant.isActive && (
+          <Button
+            variant={closedByRestaurant ? 'primary' : 'ghost'}
+            onClick={() => intake.mutate({ id: restaurant.id, acceptingOrders: closedByRestaurant })}
+            disabled={intake.isPending}
+            className={`mt-4 w-full py-2 text-sm ${closedByRestaurant ? '' : 'border-red-200 text-red-600 hover:bg-red-50'}`}
+          >
+            <Power size={15} aria-hidden />
+            {closedByRestaurant ? `Rouvrir ${restaurant.name}` : `Fermer temporairement ${restaurant.name}`}
+          </Button>
+        )}
+
+        <div className="mt-2 flex gap-2">
           <Button variant="ghost" onClick={onEdit} className="flex-1 py-2 text-sm">
             Modifier
           </Button>

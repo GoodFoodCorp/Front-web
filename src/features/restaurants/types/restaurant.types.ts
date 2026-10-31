@@ -11,7 +11,16 @@ export interface Restaurant {
   phone?: string;
   timeZone?: string;
   openingHours?: OpeningSlot[];
+  /** Open now: within its hours and not closed by the restaurant. */
   isOpenNow?: boolean;
+  /** Why it is open or not (franchise-service, restaurant's time zone). */
+  openState?: 'OPEN' | 'CLOSED_BY_RESTAURANT' | 'OUTSIDE_HOURS' | 'NO_HOURS' | 'INACTIVE';
+  /** End of the current period, "HH:mm", when open. */
+  closesAt?: string | null;
+  /** Start of the next period when outside hours: day (0 = Sunday) and "HH:mm". */
+  nextOpeningDay?: number | null;
+  nextOpeningTime?: string | null;
+  /** False when the restaurant closed itself ("Fermer temporairement"). */
   acceptingOrders?: boolean;
   prepTimeMinutes?: number;
   deliveryRadiusKm?: number;
