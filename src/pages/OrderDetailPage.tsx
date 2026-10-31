@@ -194,8 +194,6 @@ export function OrderDetailPage() {
         </div>
       )}
 
-      {AWAITING_PAYMENT.includes(order.status) && <PayNow order={order} />}
-
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-brand">
@@ -211,6 +209,8 @@ export function OrderDetailPage() {
         </div>
         <OrderStatusBadge status={order.status} />
       </div>
+
+      {AWAITING_PAYMENT.includes(order.status) && <PayNow order={order} />}
 
       {/* Timeline */}
       {order.status !== 'CANCELLED' && (
