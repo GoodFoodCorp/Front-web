@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Clock, CreditCard, MapPin, MessageCircle, RotateCcw, Send, ShoppingCart, Store, X } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
@@ -16,14 +16,31 @@ import { DishCards } from './DishCards';
 import { useChat } from '../hooks/useChat';
 import type { ChatMessage, RestaurantChoice } from '../types/chat.types';
 
-const GREETING = "Bonjour ! Je suis l'assistant Good Food. Posez-moi une question sur votre commande, un menu, ou le service — je suis là pour vous aider.";
+const GREETINGS = {
+  customer: "Bonjour ! Je suis l'assistant Good Food. Posez-moi une question sur votre commande, un menu, ou le service — je suis là pour vous aider.",
+  manager: "Bonjour ! Je suis l'assistant Good Food. Je peux vous guider dans votre portail franchisé : commandes, menus, stocks, horaires, fermeture temporaire…",
+  livreur: "Bonjour ! Je suis l'assistant Good Food. Une question sur vos courses, le code de remise, vos gains ou votre profil ? Je suis là.",
+  admin: "Bonjour ! Je suis l'assistant Good Food. Je peux vous guider dans le portail siège : restaurants, catalogue, promotions, personnel…",
+  visitor: "Bonjour ! Je suis l'assistant Good Food. Connectez-vous pour me poser vos questions : vos commandes, les menus, le service.",
+};
 
-/** Floating support chat, bottom-right on every page. Only shown to logged-in
- *  customers: the assistant's value is answering about *their* orders. */
+/** The greeting of the account's own space (the assistant answers the same way). */
+function greetingFor(roles: string[]): string {
+  if (roles.length === 0 || roles.includes('user')) return GREETINGS.customer;
+  if (roles.includes('admin')) return GREETINGS.admin;
+  if (roles.includes('manager')) return GREETINGS.manager;
+  if (roles.includes('livreur')) return GREETINGS.livreur;
+  return GREETINGS.customer;
+}
+
+/** Floating assistant, bottom-right on every page, for everyone: customers
+ *  (their orders, menus, ordering), staff (help with their own space) and
+ *  visitors (invited to sign in, the assistant needs an account). */
 export function ChatWidget() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const isLoggedIn = useAuthStore(selectIsLoggedIn);
-  // The assistant answers customers about their orders: not the staff, not couriers.
-  const isCustomer = useAuthStore((s) => s.roles.length === 0 || s.roles.includes('user'));
+  const roles = useAuthStore((s) => s.roles);
   const userId = useAuthStore((s) => s.userId);
   const claimFor = useChatStore((s) => s.claimFor);
   // A conversation is private to the account that had it: switching account (or
@@ -65,7 +82,8 @@ export function ChatWidget() {
     if (isOpen) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [isOpen, messages, isPending]);
 
-  if (!isLoggedIn || !isCustomer) return null;
+  // Clear of the courier's tab bar (phone) and of a restaurant's cart bar.
+  const lifted = pathname.startsWith('/courier') ? 'bottom-24 md:bottom-6' : pathname.startsWith('/restaurants/') ? 'bottom-24' : 'bottom-6';
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,23 +93,25 @@ export function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div className={`fixed right-6 z-50 flex flex-col items-end gap-3 ${lifted}`}>
       {isOpen && (
         <div className="flex h-[34rem] max-h-[calc(100vh-7rem)] w-[24rem] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border border-brand/10 bg-white shadow-[var(--shadow-lift)]">
           <div className="flex items-center justify-between bg-brand px-4 py-3">
             <p className="font-display font-bold text-white">Assistant Good Food</p>
             <div className="flex items-center gap-1.5">
               {confirmingReset && <span className="text-xs text-white/80">Sûr ? Recliquez</span>}
-              <button
-                onClick={resetClick}
-                aria-label="Réinitialiser la conversation"
-                title="Réinitialiser la conversation"
-                className={`grid h-7 w-7 place-items-center rounded-lg transition hover:bg-white/10 ${
-                  confirmingReset ? 'text-accent' : 'text-white/80 hover:text-white'
-                }`}
-              >
-                <RotateCcw size={15} />
-              </button>
+              {isLoggedIn && (
+                <button
+                  onClick={resetClick}
+                  aria-label="Réinitialiser la conversation"
+                  title="Réinitialiser la conversation"
+                  className={`grid h-7 w-7 place-items-center rounded-lg transition hover:bg-white/10 ${
+                    confirmingReset ? 'text-accent' : 'text-white/80 hover:text-white'
+                  }`}
+                >
+                  <RotateCcw size={15} />
+                </button>
+              )}
               <button
                 onClick={toggle}
                 aria-label="Fermer le chat"
@@ -103,7 +123,7 @@ export function ChatWidget() {
           </div>
 
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
-            <ChatBubble role="assistant" content={GREETING} />
+            <ChatBubble role="assistant" content={isLoggedIn ? greetingFor(roles) : GREETINGS.visitor} />
             {messages.map((m, i) => (
               <div key={m.id}>
                 <ChatBubble role={m.role} content={m.content} />
@@ -119,18 +139,29 @@ export function ChatWidget() {
             {isPending && <TypingIndicator />}
           </div>
 
-          <form onSubmit={submit} className="flex items-center gap-2 border-t border-brand/10 p-3">
-            <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Écrivez votre message…"
-              className="flex-1"
-              disabled={isPending}
-            />
-            <Button type="submit" disabled={isPending || !draft.trim()} className="shrink-0 px-3">
-              <Send size={16} />
-            </Button>
-          </form>
+          {!isLoggedIn ? (
+            <div className="flex gap-2 border-t border-brand/10 p-3">
+              <Button className="flex-1" onClick={() => navigate('/login', { state: { from: pathname } })}>
+                Se connecter
+              </Button>
+              <Button variant="ghost" className="flex-1" onClick={() => navigate('/register')}>
+                Créer un compte
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={submit} className="flex items-center gap-2 border-t border-brand/10 p-3">
+              <Input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Écrivez votre message…"
+                className="flex-1"
+                disabled={isPending}
+              />
+              <Button type="submit" disabled={isPending || !draft.trim()} className="shrink-0 px-3">
+                <Send size={16} />
+              </Button>
+            </form>
+          )}
         </div>
       )}
 
