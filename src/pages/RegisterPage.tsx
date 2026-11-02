@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { useCartStore } from '../store/cartStore';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { OAuthButtons } from '../features/auth/components/OAuthButtons';
@@ -24,6 +25,7 @@ export function RegisterPage() {
   const mismatch = confirm.length > 0 && password !== confirm;
   const weakPassword = password.length > 0 && isWeakPassword(password);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const cartInProgress = useCartStore((s) => s.lines.length > 0);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +34,9 @@ export function RegisterPage() {
       { email, password },
       {
         onSuccess: (result) =>
-          result.verificationRequired ? setSentTo(email) : playWelcome(() => navigate('/', { replace: true })),
+          result.verificationRequired
+            ? setSentTo(email)
+            : playWelcome(() => navigate(cartInProgress ? '/cart' : '/', { replace: true })),
       },
     );
   };
@@ -44,6 +48,11 @@ export function RegisterPage() {
           Votre compte est créé. Un lien de confirmation vient d’être envoyé à <strong>{sentTo}</strong> : ouvrez-le pour
           activer votre compte, puis connectez-vous.
         </p>
+        {cartInProgress && (
+          <p className="mt-3 text-sm text-neutral-600">
+            Votre panier est conservé : vous le retrouverez dès votre connexion, avec votre code promo.
+          </p>
+        )}
       </AuthCard>
     );
   }

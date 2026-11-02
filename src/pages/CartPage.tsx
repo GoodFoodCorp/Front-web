@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, Minus, MapPin, Plus, Store, Trash2 } from 'lucide-react';
 import { Button } from '../components/Button';
@@ -30,9 +30,23 @@ const REFUSALS: Record<string, string> = {
   INACTIVE: "Ce restaurant n'est plus disponible.",
 };
 
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 export function CartPage() {
   const navigate = useNavigate();
-  const { lines, restaurantId, restaurantName, add, decrement, remove, totalCents } = useCartStore();
+  const {
+    lines,
+    restaurantId,
+    restaurantName,
+    add,
+    decrement,
+    remove,
+    totalCents,
+    pendingPromo,
+    setPendingPromo,
+    draftAddress,
+    setDraftAddress,
+  } = useCartStore();
   const checkout = useCheckout();
   const previewPromo = usePreviewPromoCode();
   const isLoggedIn = useAuthStore(selectIsLoggedIn);
@@ -44,9 +58,14 @@ export function CartPage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   // The address the assistant checked, when its proposal was moved here.
   const handedOver = (useLocation().state as { address?: string } | null)?.address ?? '';
-  // A saved address id, or 'other' for an address typed here.
-  const [addressChoice, setAddressChoice] = useState(handedOver ? 'other' : '');
-  const [typedAddress, setTypedAddress] = useState(handedOver);
+  // A saved address id, or 'other' for an address typed here (by the
+  // assistant's proposal, or by the customer before signing in).
+  const [addressChoice, setAddressChoice] = useState(handedOver || draftAddress ? 'other' : '');
+  const [typedAddress, setTypedAddressState] = useState(handedOver || draftAddress || '');
+  const setTypedAddress = (value: string) => {
+    setTypedAddressState(value);
+    if (!isLoggedIn) setDraftAddress(value.trim() ? value : null);
+  };
   const [fulfillment, setFulfillment] = useState<Fulfillment>('DELIVERY');
   const [tipCents, setTipCents] = useState(0);
   // A saved card's id, or NEW_CARD for a card typed for this order.
@@ -75,7 +94,7 @@ export function CartPage() {
   const { data: quote } = useDeliveryQuote(
     restaurantId,
     isPickup ? '' : address,
-    isLoggedIn && (isPickup || address.trim().length > 3),
+    isPickup || address.trim().length > 3,
   );
 
   const subtotal = totalCents();
@@ -87,9 +106,17 @@ export function CartPage() {
   const belowMinimum = !isPickup && !!quote && subtotal - discount < quote.minimumOrderCents;
   const refusal = quote && !quote.canOrder ? (REFUSALS[quote.refusal ?? ''] ?? REFUSALS.INACTIVE) : null;
 
-  const applyPromo = () => {
-    const code = promoInput.trim().toUpperCase();
+  const applyPromo = (typed = promoInput) => {
+    const code = typed.trim().toUpperCase();
     if (!code) return;
+    // A code is checked against the customer's account: a visitor's waits
+    // with the cart and is applied once signed in.
+    if (!isLoggedIn) {
+      setPendingPromo(code);
+      setPromoError(null);
+      return;
+    }
+    setPendingPromo(null);
     previewPromo.mutate(
       { code, amountCents: subtotal },
       {
@@ -99,17 +126,30 @@ export function CartPage() {
         },
         onError: (err) => {
           setAppliedPromo(null);
-          setPromoError(
+          setPromoError(capitalize(
             err instanceof ApiError && err.status === 404
               ? "Ce code promo n'existe pas."
               : err instanceof ApiError
                 ? err.message
                 : 'Code promo invalide.',
-          );
+          ));
         },
       },
     );
   };
+
+  // Back signed in with a code typed as a visitor: check and apply it.
+  const pendingApplied = useRef(false);
+  useEffect(() => {
+    if (!isLoggedIn || !pendingPromo || pendingApplied.current || lines.length === 0) return;
+    pendingApplied.current = true;
+    setPromoInput(pendingPromo);
+    applyPromo(pendingPromo);
+    // applyPromo reads the current subtotal; run once per sign-in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, pendingPromo, lines.length]);
+
+  const goSignIn = (to: '/login' | '/register') => navigate(to, { state: { from: '/cart' } });
 
   const placeOrder = () => {
     if (!isLoggedIn) {
@@ -342,11 +382,16 @@ export function CartPage() {
                     placeholder="Entrez votre code"
                     className="w-full rounded-xl border border-brand/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
                   />
-                  <Button onClick={applyPromo} disabled={previewPromo.isPending} className="shrink-0 px-4">
+                  <Button onClick={() => applyPromo()} disabled={previewPromo.isPending} className="shrink-0 px-4">
                     {previewPromo.isPending ? '…' : 'Appliquer'}
                   </Button>
                 </div>
                 {promoError && <p className="mt-1.5 text-xs text-red-600">{promoError}</p>}
+                {!isLoggedIn && pendingPromo && (
+                  <p className="mt-1.5 text-xs font-semibold text-brand">
+                    Code {pendingPromo} retenu : il sera vérifié et appliqué dès que vous serez connecté.
+                  </p>
+                )}
                 {appliedPromo && (
                   <p className="mt-1.5 text-xs font-semibold text-brand">
                     Code {appliedPromo.code} appliqué (-{appliedPromo.percentOff}%)
@@ -395,38 +440,58 @@ export function CartPage() {
                 <span>{formatPrice(total)}</span>
               </div>
 
-              {stripeEnabled && cards && (
-                <PaymentPicker
-                  cards={cards}
-                  value={payWithNewCard ? NEW_CARD : (selectedCard?.id ?? NEW_CARD)}
-                  onChange={setCardId}
-                  onNewCard={setNewCard}
-                  onNewCardComplete={setNewCardComplete}
-                  saveCard={saveCard}
-                  onSaveCardChange={setSaveCard}
-                />
-              )}
-              {needsCard && (
-                <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                  Saisissez votre carte pour payer.
-                </p>
-              )}
-              {refusal && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{refusal}</p>}
-              {belowMinimum && quote && (
-                <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                  Minimum de commande pour la livraison : {formatPrice(quote.minimumOrderCents)}
-                </p>
-              )}
+              {!isLoggedIn ? (
+                <div className="space-y-3 rounded-xl bg-brand-pale/60 p-4">
+                  <p className="text-sm font-semibold text-brand">Connectez-vous pour commander</p>
+                  <p className="text-xs text-neutral-600">
+                    Un compte permet de suivre la livraison, de recevoir la facture et le code à donner au livreur.
+                    Votre panier est conservé{pendingPromo ? ', avec votre code promo' : ''}.
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+                    <Button className="flex-1" onClick={() => goSignIn('/login')}>
+                      Se connecter
+                    </Button>
+                    <Button variant="ghost" className="flex-1" onClick={() => goSignIn('/register')}>
+                      Créer un compte
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                {stripeEnabled && cards && (
+                  <PaymentPicker
+                    cards={cards}
+                    value={payWithNewCard ? NEW_CARD : (selectedCard?.id ?? NEW_CARD)}
+                    onChange={setCardId}
+                    onNewCard={setNewCard}
+                    onNewCardComplete={setNewCardComplete}
+                    saveCard={saveCard}
+                    onSaveCardChange={setSaveCard}
+                  />
+                )}
+                {needsCard && (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                    Saisissez votre carte pour payer.
+                  </p>
+                )}
+                {refusal && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{refusal}</p>}
+                {belowMinimum && quote && (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                    Minimum de commande pour la livraison : {formatPrice(quote.minimumOrderCents)}
+                  </p>
+                )}
 
-              {checkout.isError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                  {(checkout.error as Error).message}
-                </p>
-              )}
+                {checkout.isError && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                    {(checkout.error as Error).message}
+                  </p>
+                )}
 
-              <Button onClick={placeOrder} variant="accent" disabled={!canOrder} className="w-full py-3">
-                {checkout.isPending ? 'Paiement en cours…' : 'Passer la commande'}
-              </Button>
+                <Button onClick={placeOrder} variant="accent" disabled={!canOrder} className="w-full py-3">
+                  {checkout.isPending ? 'Paiement en cours…' : 'Passer la commande'}
+                </Button>
+                </>
+              )}
 
               <p className="flex items-center gap-1.5 text-xs text-neutral-400">
                 <Clock size={13} /> {isPickup ? 'Prêt' : 'Livraison'} sous {isPickup ? `${quote?.prepTimeMinutes ?? 20} min` : eta}

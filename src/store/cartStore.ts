@@ -15,6 +15,12 @@ interface CartState {
   restaurantId: string | null;
   restaurantName: string | null;
   lines: CartLine[];
+  /** A promo code typed before signing in: checked and applied once signed in. */
+  pendingPromo: string | null;
+  setPendingPromo: (code: string | null) => void;
+  /** The delivery address a visitor typed: still selected once signed in. */
+  draftAddress: string | null;
+  setDraftAddress: (address: string | null) => void;
   add: (item: MenuItem, restaurant: { id: string; name: string }) => void;
   decrement: (itemId: string) => void;
   remove: (itemId: string) => void;
@@ -29,6 +35,10 @@ export const useCartStore = create<CartState>()(
       restaurantId: null,
       restaurantName: null,
       lines: [],
+      pendingPromo: null,
+      setPendingPromo: (code) => set({ pendingPromo: code }),
+      draftAddress: null,
+      setDraftAddress: (address) => set({ draftAddress: address }),
 
       add: (item, restaurant) =>
         set((state) => {
@@ -66,7 +76,7 @@ export const useCartStore = create<CartState>()(
             : { lines };
         }),
 
-      clear: () => set({ lines: [], restaurantId: null, restaurantName: null }),
+      clear: () => set({ lines: [], restaurantId: null, restaurantName: null, pendingPromo: null, draftAddress: null }),
 
       totalCents: () => get().lines.reduce((sum, l) => sum + l.item.priceCents * l.quantity, 0),
 
