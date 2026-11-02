@@ -31,3 +31,13 @@ export interface PromoPreview {
   percent_off: number;
   discount_cents: number;
 }
+
+/** The welcome offer, as far as the visitor or the signed-in account goes. */
+export interface WelcomeOffer {
+  code: string;
+  percent_off: number;
+  /** Active, within its dates, not used up. */
+  available: boolean;
+  /** The signed-in customer may still use it (false for a visitor). */
+  eligible: boolean;
+}

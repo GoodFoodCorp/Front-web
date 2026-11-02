@@ -1,5 +1,5 @@
 import { http } from '../../../services/http';
-import type { PromoCode, PromoCodeForm, PromoPreview } from '../types/promo.types';
+import type { PromoCode, PromoCodeForm, PromoPreview, WelcomeOffer } from '../types/promo.types';
 
 /** Promo codes are served by promo-service. */
 export const promosApi = {
@@ -12,6 +12,9 @@ export const promosApi = {
     http<PromoCode>(`/api/promos/${id}`, { method: 'PUT', body: JSON.stringify(form) }),
 
   remove: (id: string) => http<void>(`/api/promos/${id}`, { method: 'DELETE' }),
+
+  /** Public: whether the welcome offer runs and the signed-in customer may still use it. */
+  welcome: () => http<WelcomeOffer>('/api/promos/welcome'),
 
   /** Safe to call repeatedly while the customer is composing their cart. */
   preview: (code: string, amountCents: number) =>

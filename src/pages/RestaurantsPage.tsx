@@ -7,21 +7,23 @@ import { EmptyState } from '../components/EmptyState';
 import { useRestaurants } from '../features/restaurants/hooks/useRestaurants';
 import { RestaurantFinder } from '../features/restaurants/components/RestaurantFinder';
 import { useReviewSummaries } from '../features/reviews';
+import { useWelcomeOffer } from '../features/promos/hooks/usePromos';
 import { HERO_PHOTO, PROMO_GREEN_PHOTO, PROMO_YELLOW_PHOTO } from '../utils/images';
-
-const PROMO_CODE = 'BIENVENUE20';
 
 export function RestaurantsPage() {
   const navigate = useNavigate();
   const { data: restaurants, isLoading: restaurantsLoading } = useRestaurants();
   const [copied, setCopied] = useState(false);
+  // Shown only to whoever may use it: never to staff or to who already did.
+  const welcome = useWelcomeOffer();
   const { data: marks } = useReviewSummaries((restaurants ?? []).map((r) => r.id));
 
   const toFinder = () => document.getElementById('restaurants')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const applyPromo = async () => {
+    if (!welcome) return;
     try {
-      await navigator.clipboard.writeText(PROMO_CODE);
+      await navigator.clipboard.writeText(welcome.code);
     } catch {
       /* clipboard may be unavailable — the code is shown either way */
     }
@@ -67,24 +69,37 @@ export function RestaurantsPage() {
         </div>
       </section>
 
-      {/* ── Promo bar ── */}
-      <section className="bg-accent px-4 py-4">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <TrendingUp size={20} className="text-brand-dark" />
-            <div className="text-sm text-brand-dark">
-              <p className="font-semibold">Offre de bienvenue</p>
-              <p className="font-bold">
-                −20 % sur votre première commande avec le code {PROMO_CODE}
-              </p>
-              <p className="text-xs">Valable une fois par client, sur le montant des plats.</p>
+      {/* ── Welcome offer, for who may use it ── */}
+      {welcome && (
+        <section className="bg-accent px-4 py-4">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <TrendingUp size={20} className="text-brand-dark" />
+              <div className="text-sm text-brand-dark">
+                <p className="font-semibold">Offre de bienvenue</p>
+                <p className="font-bold">
+                  −{welcome.percentOff} % sur votre {welcome.signedIn ? 'prochaine' : 'première'} commande avec le code{' '}
+                  {welcome.code}
+                </p>
+                <p className="text-xs">
+                  {welcome.signedIn
+                    ? 'Valable une fois par client, sur le montant des plats.'
+                    : 'En créant votre compte. Valable une fois par client, sur le montant des plats.'}
+                </p>
+              </div>
             </div>
+            {welcome.signedIn ? (
+              <Button onClick={applyPromo} className="shrink-0 px-4 py-2">
+                {copied ? 'Code copié ✓' : 'Profiter maintenant'}
+              </Button>
+            ) : (
+              <Button onClick={() => navigate('/register')} className="shrink-0 px-4 py-2">
+                Créer mon compte
+              </Button>
+            )}
           </div>
-          <Button onClick={applyPromo} className="shrink-0 px-4 py-2">
-            {copied ? 'Code copié ✓' : 'Profiter maintenant'}
-          </Button>
-        </div>
-      </section>
+        </section>
+      )}
 
       <div className="mx-auto max-w-6xl space-y-14 px-4 py-10">
         <RestaurantFinder restaurants={restaurants} marks={marks} />
@@ -94,13 +109,15 @@ export function RestaurantsPage() {
           <h2 className="font-display text-2xl font-bold text-brand sm:text-3xl">Découvrez nos dernières offres</h2>
           <p className="mt-1 text-neutral-500">Ne manquez pas nos promotions exceptionnelles</p>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <OfferCard
-              tone="brand"
-              photo={PROMO_GREEN_PHOTO}
-              title="20% de réduction sur votre première commande"
-              subtitle={`Code promo : ${PROMO_CODE}`}
-              onClick={toFinder}
-            />
+            {welcome && (
+              <OfferCard
+                tone="brand"
+                photo={PROMO_GREEN_PHOTO}
+                title={`${welcome.percentOff} % de réduction sur votre ${welcome.signedIn ? 'prochaine' : 'première'} commande`}
+                subtitle={`Code promo : ${welcome.code}`}
+                onClick={welcome.signedIn ? toFinder : () => navigate('/register')}
+              />
+            )}
             <OfferCard
               tone="accent"
               photo={PROMO_YELLOW_PHOTO}
