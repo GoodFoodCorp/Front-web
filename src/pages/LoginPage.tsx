@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { useCartStore } from '../store/cartStore';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { OAuthButtons } from '../features/auth/components/OAuthButtons';
@@ -31,7 +32,9 @@ export function LoginPage() {
   const welcome = useWelcomeStore((s) => s.phase !== 'idle');
   const playWelcome = useWelcomeStore((s) => s.play);
 
-  const from = (location.state as { from?: string } | null)?.from;
+  // Signing in with a cart in progress goes back to it (customers; staff land on their portal).
+  const cartInProgress = useCartStore((s) => s.lines.length > 0);
+  const from = (location.state as { from?: string } | null)?.from ?? (cartInProgress ? '/cart' : null);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
