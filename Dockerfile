@@ -18,6 +18,10 @@ RUN npm run build
 
 FROM nginx:alpine
 
+# Security fixes published since the base image was built (the image
+# scan blocks a release on a fixable critical vulnerability).
+RUN apk upgrade --no-cache
+
 # A template: the entrypoint injects the container's DNS resolver into it
 # (opt-in through NGINX_ENTRYPOINT_LOCAL_RESOLVERS).
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
